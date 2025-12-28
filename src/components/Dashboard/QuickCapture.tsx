@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Plus, Send } from 'lucide-react'
+import { Plus, Send, Sparkles, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { useTasksStore, useAIStore } from '@/stores'
 
 export const QuickCapture: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
+  const [isAiParsing, setIsAiParsing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const { createTask, fetchTodaysTasks } = useTasksStore()
+  const { parseTasks, isInitialized } = useAIStore()
 
   useEffect(() => {
     if (isExpanded) {
@@ -14,13 +19,69 @@ export const QuickCapture: React.FC = () => {
     }
   }, [isExpanded])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Create a simple task directly
+  const createSimpleTask = async (title: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    await createTask({
+      title: title.trim(),
+      status: 'pending',
+      priority: 3, // Default medium priority (1-5 scale)
+      scheduledDate: today,
+      goalId: null,
+    })
+    await fetchTodaysTasks()
+  }
+
+  // Convert string priority to numeric (1-5 scale)
+  const priorityToNumber = (priority: 'high' | 'medium' | 'low'): number => {
+    switch (priority) {
+      case 'high': return 5
+      case 'medium': return 3
+      case 'low': return 1
+      default: return 3
+    }
+  }
+
+  // Use AI to parse tasks from natural language
+  const handleAiParse = async () => {
+    if (!taskTitle.trim()) return
+
+    setIsAiParsing(true)
+    try {
+      const result = await parseTasks(taskTitle)
+      if (result && result.tasks.length > 0) {
+        // Create all parsed tasks
+        for (const task of result.tasks) {
+          await createTask({
+            title: task.title,
+            description: task.description,
+            status: 'pending',
+            priority: priorityToNumber(task.priority),
+            scheduledDate: task.dueDate || new Date().toISOString().split('T')[0],
+            goalId: null, // Could be linked later based on goalHint
+          })
+        }
+        await fetchTodaysTasks()
+        setTaskTitle('')
+        setIsExpanded(false)
+      }
+    } catch (error) {
+      console.error('AI parsing failed:', error)
+      // Fall back to simple task creation
+      await createSimpleTask(taskTitle)
+      setTaskTitle('')
+      setIsExpanded(false)
+    } finally {
+      setIsAiParsing(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!taskTitle.trim()) return
 
-    // TODO: Create task via IPC
-    console.log('Creating task:', taskTitle)
-
+    // Create task directly
+    await createSimpleTask(taskTitle)
     setTaskTitle('')
     setIsExpanded(false)
   }
@@ -62,11 +123,28 @@ export const QuickCapture: React.FC = () => {
           className="text-sm"
         />
       </div>
+      {/* AI Parse Button - uses Claude to parse natural language */}
+      {isInitialized && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="md"
+          onClick={handleAiParse}
+          disabled={isAiParsing || !taskTitle.trim()}
+          title="Parse with AI (extracts multiple tasks, dates, priorities)"
+        >
+          {isAiParsing ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Sparkles size={14} />
+          )}
+        </Button>
+      )}
       <Button
         type="submit"
         variant="primary"
         size="md"
-        disabled={!taskTitle.trim()}
+        disabled={!taskTitle.trim() || isAiParsing}
       >
         <Send size={14} />
       </Button>
