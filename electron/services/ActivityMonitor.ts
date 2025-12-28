@@ -1,7 +1,33 @@
-import { activeWindow } from 'active-win'
 import { BrowserWindow } from 'electron'
 import { activityRepository } from '../repositories'
 import type { ActivityState } from '../../src/types'
+
+// Dynamic import for active-win with graceful fallback
+let activeWindow: typeof import('active-win').activeWindow | null = null
+let activeWinInitialized = false
+let activeWinError: string | null = null
+
+async function getActiveWindow(): Promise<import('active-win').Result | undefined> {
+  // Lazy initialize active-win module
+  if (!activeWinInitialized) {
+    activeWinInitialized = true
+    try {
+      const activeWinModule = await import('active-win')
+      activeWindow = activeWinModule.activeWindow
+      console.log('[ActivityMonitor] active-win module loaded successfully')
+    } catch (error) {
+      activeWinError = error instanceof Error ? error.message : 'Unknown error loading active-win'
+      console.error('[ActivityMonitor] Failed to load active-win module:', activeWinError)
+      console.error('[ActivityMonitor] Activity monitoring will be disabled')
+    }
+  }
+
+  if (!activeWindow) {
+    return undefined
+  }
+
+  return activeWindow()
+}
 
 // State change callback type
 type StateChangeCallback = (state: {
@@ -120,6 +146,8 @@ class ActivityMonitor {
     currentState: ActivityState
     currentAppName: string
     currentWindowTitle: string
+    isAvailable: boolean
+    error: string | null
   } {
     return {
       isRunning: this.isRunning,
@@ -127,16 +155,18 @@ class ActivityMonitor {
       currentState: this.currentState,
       currentAppName: this.currentAppName,
       currentWindowTitle: this.currentWindowTitle,
+      isAvailable: activeWindow !== null || !activeWinInitialized,
+      error: activeWinError,
     }
   }
 
   // Main polling function
   private async poll(): Promise<void> {
     try {
-      const window = await activeWindow()
+      const window = await getActiveWindow()
 
       if (!window) {
-        // No active window (screen locked, etc.)
+        // No active window (screen locked, module not loaded, etc.)
         return
       }
 

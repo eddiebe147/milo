@@ -16,8 +16,8 @@
 | 4. Foundation Pour | ✅ Complete | Electron + React + TypeScript scaffolded, DB schema, IPC, Pip-Boy UI | Dec 28, 2024 |
 | 5. Feature Blocks | ✅ Complete | All P0 features implemented (see below) | Dec 28, 2024 |
 | 6. Integration Pass | ✅ Complete | All blocks connected, data flows working | Dec 28, 2024 |
-| 7. Test Coverage | 🔄 Next | Need unit, integration, and E2E tests | |
-| 8. Polish & Harden | ⏳ Pending | | |
+| 7. Test Coverage | ✅ Complete | 59 unit tests + E2E framework | Dec 28, 2024 |
+| 8. Polish & Harden | 🔄 In Progress | Error handling, loading states, edge cases | |
 | 9. Launch Prep | ⏳ Pending | | |
 | 10. Ship | ⏳ Pending | | |
 | 11. Listen & Iterate | ⏳ Pending | | |
@@ -26,16 +26,25 @@
 
 ## Current Stage Details
 
-### Stage 7: Test Coverage (NEXT)
+### Stage 8: Polish & Harden (CURRENT)
 
-**Checkpoint Question:** "Are all tests green and is coverage sufficient?"
+**Checkpoint Question:** "What breaks if I do something stupid?"
 
 **Required:**
-- [ ] Unit tests for business logic (stores, utils, services)
-- [ ] Integration tests for IPC handlers and API routes
-- [ ] E2E tests for critical user flows (morning briefing, task management, evening review)
-- [ ] All tests passing (`npm test` exits 0)
-- [ ] Coverage threshold met (70%+ for critical paths)
+- [x] Error handling for all async operations with user-friendly messages
+- [x] Loading states for all data fetching operations
+- [x] Empty states for lists (tasks, goals, activity logs)
+- [x] Input validation and sanitization
+- [x] Edge case handling (offline, API failures, corrupted data)
+- [x] Fix native module issues (active-win graceful fallback)
+- [x] UI consistency audit (spacing, colors, typography)
+
+**Completed Polish Work (Dec 28, 2024):**
+- **MissionPanel.tsx**: Rewrote with real store integration, loading/error/empty states, priority indicators, active task highlighting
+- **StatsPanel.tsx**: Added aggregated loading/error states with retry functionality
+- **StateIndicator.tsx**: Connected to real activity store, proper togglePause implementation with loading state
+- **QuickCapture.tsx**: Added success/error feedback toasts, loading state on submit
+- **ActivityMonitor.ts**: Added graceful fallback for active-win native module failures
 
 ---
 

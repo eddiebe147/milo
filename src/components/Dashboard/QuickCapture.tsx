@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Plus, Send, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Send, Sparkles, Loader2, AlertCircle, Check } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useTasksStore, useAIStore } from '@/stores'
@@ -8,6 +8,8 @@ export const QuickCapture: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
   const [isAiParsing, setIsAiParsing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const { createTask, fetchTodaysTasks } = useTasksStore()
@@ -18,6 +20,18 @@ export const QuickCapture: React.FC = () => {
       inputRef.current?.focus()
     }
   }, [isExpanded])
+
+  // Clear feedback after 3 seconds
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback])
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message })
+  }
 
   // Create a simple task directly
   const createSimpleTask = async (title: string) => {
@@ -62,15 +76,27 @@ export const QuickCapture: React.FC = () => {
           })
         }
         await fetchTodaysTasks()
+        showFeedback('success', `Created ${result.tasks.length} task${result.tasks.length > 1 ? 's' : ''}`)
+        setTaskTitle('')
+        setIsExpanded(false)
+      } else {
+        // AI returned no tasks, fall back to simple creation
+        await createSimpleTask(taskTitle)
+        showFeedback('success', 'Task added')
         setTaskTitle('')
         setIsExpanded(false)
       }
     } catch (error) {
       console.error('AI parsing failed:', error)
       // Fall back to simple task creation
-      await createSimpleTask(taskTitle)
-      setTaskTitle('')
-      setIsExpanded(false)
+      try {
+        await createSimpleTask(taskTitle)
+        showFeedback('success', 'Task added')
+        setTaskTitle('')
+        setIsExpanded(false)
+      } catch (createError) {
+        showFeedback('error', 'Failed to create task')
+      }
     } finally {
       setIsAiParsing(false)
     }
@@ -80,10 +106,18 @@ export const QuickCapture: React.FC = () => {
     e.preventDefault()
     if (!taskTitle.trim()) return
 
-    // Create task directly
-    await createSimpleTask(taskTitle)
-    setTaskTitle('')
-    setIsExpanded(false)
+    setIsSubmitting(true)
+    try {
+      await createSimpleTask(taskTitle)
+      showFeedback('success', 'Task added')
+      setTaskTitle('')
+      setIsExpanded(false)
+    } catch (error) {
+      console.error('Failed to create task:', error)
+      showFeedback('error', 'Failed to create task')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -95,19 +129,41 @@ export const QuickCapture: React.FC = () => {
 
   if (!isExpanded) {
     return (
-      <button
-        onClick={() => setIsExpanded(true)}
-        className={`
-          w-full p-3 rounded-sm border border-dashed border-pipboy-border
-          flex items-center justify-center gap-2
-          text-pipboy-green-dim hover:text-pipboy-green
-          hover:border-pipboy-green/50 hover:bg-pipboy-surface/50
-          transition-all duration-200
-        `}
-      >
-        <Plus size={16} />
-        <span className="text-sm">Quick capture task</span>
-      </button>
+      <div className="space-y-2">
+        {/* Feedback toast */}
+        {feedback && (
+          <div
+            className={`
+              flex items-center gap-2 p-2 rounded-sm text-xs
+              animate-in fade-in slide-in-from-top-1 duration-200
+              ${feedback.type === 'success'
+                ? 'bg-pipboy-green/10 text-pipboy-green border border-pipboy-green/30'
+                : 'bg-pipboy-red/10 text-pipboy-red border border-pipboy-red/30'
+              }
+            `}
+          >
+            {feedback.type === 'success' ? (
+              <Check size={14} />
+            ) : (
+              <AlertCircle size={14} />
+            )}
+            {feedback.message}
+          </div>
+        )}
+        <button
+          onClick={() => setIsExpanded(true)}
+          className={`
+            w-full p-3 rounded-sm border border-dashed border-pipboy-border
+            flex items-center justify-center gap-2
+            text-pipboy-green-dim hover:text-pipboy-green
+            hover:border-pipboy-green/50 hover:bg-pipboy-surface/50
+            transition-all duration-200
+          `}
+        >
+          <Plus size={16} />
+          <span className="text-sm">Quick capture task</span>
+        </button>
+      </div>
     )
   }
 
@@ -144,9 +200,13 @@ export const QuickCapture: React.FC = () => {
         type="submit"
         variant="primary"
         size="md"
-        disabled={!taskTitle.trim() || isAiParsing}
+        disabled={!taskTitle.trim() || isAiParsing || isSubmitting}
       >
-        <Send size={14} />
+        {isSubmitting ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Send size={14} />
+        )}
       </Button>
     </form>
   )

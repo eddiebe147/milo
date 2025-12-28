@@ -1,33 +1,55 @@
-import React, { useEffect } from 'react'
-import { TrendingUp, Flame, Clock, Target } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { TrendingUp, Flame, Clock, Target, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { CircularProgress } from '@/components/ui/Progress'
 import { getScoreLabel, getScoreColor, formatDuration } from '@/lib/utils'
 import { useScoresStore, useActivityStore, useTasksStore } from '@/stores'
 
 export const StatsPanel: React.FC = () => {
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   const {
     todayScore,
     currentStreak,
     recentScores,
+    isLoading: scoresLoading,
+    error: scoresError,
     fetchTodayScore,
     fetchStreak,
     fetchRecentScores,
     getScoreBreakdown,
   } = useScoresStore()
 
-  const { todaySummary, fetchTodayData } = useActivityStore()
-  const { tasks, fetchTodaysTasks } = useTasksStore()
+  const { todaySummary, isLoading: activityLoading, error: activityError, fetchTodayData } = useActivityStore()
+  const { tasks, isLoading: tasksLoading, error: tasksError, fetchTodaysTasks } = useTasksStore()
 
-  // Fetch data on mount
+  // Aggregate loading and error states
+  const isLoading = isInitialLoad && (scoresLoading || activityLoading || tasksLoading)
+  const error = loadError || scoresError || activityError || tasksError
+
+  // Fetch all data on mount
+  const fetchAllData = async () => {
+    setLoadError(null)
+    try {
+      await Promise.all([
+        fetchTodayScore(),
+        fetchStreak(),
+        fetchRecentScores(7),
+        getScoreBreakdown(),
+        fetchTodayData(),
+        fetchTodaysTasks(),
+      ])
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load stats')
+    } finally {
+      setIsInitialLoad(false)
+    }
+  }
+
   useEffect(() => {
-    fetchTodayScore()
-    fetchStreak()
-    fetchRecentScores(7)
-    getScoreBreakdown()
-    fetchTodayData()
-    fetchTodaysTasks()
-  }, [fetchTodayScore, fetchStreak, fetchRecentScores, getScoreBreakdown, fetchTodayData, fetchTodaysTasks])
+    fetchAllData()
+  }, [])
 
   // Calculate values from real data or use fallbacks
   const score = todayScore?.score ?? 0
@@ -41,6 +63,54 @@ export const StatsPanel: React.FC = () => {
   const focusPercentage = totalMinutes > 0 ? Math.round((greenMinutes / totalMinutes) * 100) : 0
   const scoreLabel = getScoreLabel(score)
   const scoreColor = getScoreColor(score)
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card variant="default" padding="md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-pipboy-green" />
+            <CardTitle>Today's Signal</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="flex flex-col items-center justify-center py-8 text-pipboy-green-dim">
+            <Loader2 size={24} className="animate-spin mb-2" />
+            <p className="text-sm">Loading stats...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card variant="default" padding="md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-pipboy-green" />
+            <CardTitle>Today's Signal</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="flex flex-col items-center justify-center py-6 text-pipboy-red">
+            <AlertCircle size={24} className="mb-2" />
+            <p className="text-sm">Failed to load stats</p>
+            <p className="text-xs text-pipboy-red/70 mt-1 max-w-[200px] text-center">{error}</p>
+            <button
+              onClick={fetchAllData}
+              className="mt-3 flex items-center gap-1 text-xs text-pipboy-green hover:text-pipboy-green/80"
+            >
+              <RefreshCw size={12} />
+              Try again
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card variant="default" padding="md">

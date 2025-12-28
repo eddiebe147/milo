@@ -1,18 +1,36 @@
 import React, { useState, useEffect } from 'react'
-import { Activity, Play } from 'lucide-react'
+import { Activity, Play, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { GlowText } from '@/components/ui/GlowText'
+import { useActivityStore } from '@/stores'
 
 type ActivityState = 'green' | 'amber' | 'red'
 
 export const StateIndicator: React.FC = () => {
+  const { status, isLoading, togglePause, fetchStatus } = useActivityStore()
+
   const [currentState, setCurrentState] = useState<ActivityState>('amber')
   const [stateSince, setStateSince] = useState<Date>(new Date())
   const [currentApp, setCurrentApp] = useState<string>('Unknown')
-  const [isPaused, setIsPaused] = useState(false)
+
+  // Derive isPaused from store status
+  const isPaused = status?.isPaused ?? false
 
   // Calculate duration since state change
   const [duration, setDuration] = useState('0m')
+
+  // Fetch initial status
+  useEffect(() => {
+    fetchStatus()
+  }, [fetchStatus])
+
+  // Update local state from store status
+  useEffect(() => {
+    if (status) {
+      setCurrentState(status.currentState as ActivityState)
+      setCurrentApp(status.currentAppName || 'Unknown')
+    }
+  }, [status])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -69,9 +87,12 @@ export const StateIndicator: React.FC = () => {
 
   const config = stateConfig[currentState]
 
-  const togglePause = () => {
-    setIsPaused(!isPaused)
-    // TODO: Implement actual pause/resume via IPC
+  const handleTogglePause = async () => {
+    try {
+      await togglePause()
+    } catch (error) {
+      console.error('Failed to toggle pause:', error)
+    }
   }
 
   return (
@@ -121,15 +142,18 @@ export const StateIndicator: React.FC = () => {
 
         {/* Activity icon / Pause button */}
         <button
-          onClick={togglePause}
+          onClick={handleTogglePause}
+          disabled={isLoading}
           className={`
             p-2 rounded-sm transition-all duration-200
-            hover:bg-pipboy-surface
+            hover:bg-pipboy-surface disabled:opacity-50
             ${isPaused ? 'text-pipboy-green-dim' : `text-pipboy-${config.color}`}
           `}
           title={isPaused ? 'Resume monitoring' : 'Pause monitoring'}
         >
-          {isPaused ? (
+          {isLoading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : isPaused ? (
             <Play size={18} />
           ) : (
             <Activity size={18} className="animate-pulse" />
