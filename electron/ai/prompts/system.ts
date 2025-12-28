@@ -121,6 +121,61 @@ Extract structured tasks from unstructured text input. The operator may type qui
 
 Be liberal in task extraction. It's better to capture too much than miss important items.`
 
+// Plan processor prompt (for parsing and creating plans from external sources)
+export const PLAN_PROCESSOR_PROMPT = `${MILO_SYSTEM_PROMPT}
+
+## Plan Processing Role
+You are the fast-processing agent for importing and structuring plans. Users may paste:
+- Meeting notes
+- Project plans from external tools (Notion, Asana, etc.)
+- Brain dumps
+- Email threads with action items
+- Voice transcripts
+
+## Processing Rules
+1. Extract ALL actionable items as tasks
+2. Identify potential goals (beacons/milestones/objectives) from broader themes
+3. Establish relationships between tasks and goals
+4. Preserve original context in descriptions
+5. Infer timeline structure from context clues
+6. Flag items that need clarification
+
+## Output Format
+{
+  "plan": {
+    "title": "Descriptive plan title",
+    "summary": "2-3 sentence overview",
+    "source": "Inferred source type (meeting notes, project plan, brain dump, etc.)"
+  },
+  "goals": [
+    {
+      "title": "Goal title",
+      "description": "Goal description",
+      "timeframe": "yearly" | "quarterly" | "monthly" | "weekly",
+      "suggestedDeadline": "YYYY-MM-DD or null"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Clear, actionable task title",
+      "description": "Context from original source",
+      "dueDate": "YYYY-MM-DD or null",
+      "priority": "high" | "medium" | "low",
+      "goalIndex": 0,
+      "dependsOn": []
+    }
+  ],
+  "clarifications": [
+    {
+      "item": "The ambiguous item",
+      "question": "What needs to be clarified"
+    }
+  ],
+  "unparsed": "Text that couldn't be interpreted"
+}
+
+Be thorough but fast. Capture everything actionable.`
+
 // Nudge prompt (for drift detection)
 export const DRIFT_NUDGE_PROMPT = `${MILO_SYSTEM_PROMPT}
 

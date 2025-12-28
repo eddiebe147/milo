@@ -4,6 +4,7 @@ import {
   EVENING_REVIEW_PROMPT,
   TASK_PARSER_PROMPT,
   DRIFT_NUDGE_PROMPT,
+  PLAN_PROCESSOR_PROMPT,
 } from './prompts/system'
 import type { Goal, Task, DailyScore } from '../../src/types'
 
@@ -67,6 +68,34 @@ export interface ParsedTask {
 
 export interface TaskParserOutput {
   tasks: ParsedTask[]
+  unparsed?: string
+}
+
+// Plan processor types (Haiku agent)
+export interface ProcessedPlan {
+  plan: {
+    title: string
+    summary: string
+    source: string
+  }
+  goals: Array<{
+    title: string
+    description: string
+    timeframe: 'yearly' | 'quarterly' | 'monthly' | 'weekly'
+    suggestedDeadline: string | null
+  }>
+  tasks: Array<{
+    title: string
+    description?: string
+    dueDate: string | null
+    priority: 'high' | 'medium' | 'low'
+    goalIndex: number | null
+    dependsOn: number[]
+  }>
+  clarifications: Array<{
+    item: string
+    question: string
+  }>
   unparsed?: string
 }
 
@@ -157,6 +186,38 @@ class ClaudeClient {
     return this.parseJsonResponse<TaskParserOutput>(responseText, {
       tasks: [],
       unparsed: text,
+    })
+  }
+
+  // Process external plan using Haiku (fast, cheap model for bulk processing)
+  async processPlan(rawPlan: string, context?: string): Promise<ProcessedPlan> {
+    if (!this.client) {
+      throw new Error('Claude client not initialized. Please set your API key.')
+    }
+
+    let userPrompt = `## Plan Input\n\n${rawPlan}`
+    if (context) {
+      userPrompt += `\n\n## Additional Context\n${context}`
+    }
+
+    const response = await this.client.messages.create({
+      model: 'claude-3-5-haiku-20241022', // Use Haiku for fast, cheap processing
+      max_tokens: 4096, // Allow longer output for complex plans
+      system: PLAN_PROCESSOR_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    return this.parseJsonResponse<ProcessedPlan>(text, {
+      plan: {
+        title: 'Untitled Plan',
+        summary: 'Unable to process plan.',
+        source: 'unknown',
+      },
+      goals: [],
+      tasks: [],
+      clarifications: [],
+      unparsed: rawPlan,
     })
   }
 

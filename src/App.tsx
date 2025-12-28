@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Dashboard } from '@/components/Dashboard/Dashboard'
 import { MorningBriefing, EveningReview } from '@/components/Dialogue'
+import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
 import { useNudgeStore, useAIStore } from '@/stores'
 
-type View = 'dashboard' | 'settings' | 'onboarding'
+type View = 'dashboard' | 'settings' | 'onboarding' | 'plan-import'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -63,7 +64,12 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'dashboard' && (
+          <Dashboard onOpenPlanImport={() => setCurrentView('plan-import')} />
+        )}
+        {currentView === 'plan-import' && (
+          <PlanImporter onClose={() => setCurrentView('dashboard')} />
+        )}
         {currentView === 'settings' && (
           <div className="p-4 text-pipboy-green">
             <h2 className="text-xl glow-medium mb-4">Settings</h2>

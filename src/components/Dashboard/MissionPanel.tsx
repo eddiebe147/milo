@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Target, CheckCircle, Circle, ChevronRight, Loader2, AlertCircle } from 'lucide-react'
+import { Target, CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useTasksStore } from '@/stores'

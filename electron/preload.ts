@@ -6,6 +6,7 @@ import type {
   EveningReviewInput,
   EveningReviewOutput,
   TaskParserOutput,
+  ProcessedPlan,
 } from './ai/ClaudeClient'
 import type { NudgeEvent } from './services/NudgeManager'
 
@@ -109,6 +110,16 @@ export interface MiloAPI {
     eveningReview: (input: EveningReviewInput) => Promise<EveningReviewOutput>
     parseTasks: (text: string) => Promise<TaskParserOutput>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
+    processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+  }
+  plan: {
+    apply: (processedPlan: ProcessedPlan) => Promise<{
+      success: boolean
+      goalsCreated: number
+      tasksCreated: number
+      goalIds: string[]
+      taskIds: string[]
+    }>
   }
   nudge: {
     getConfig: () => Promise<NudgeConfig>
@@ -218,6 +229,14 @@ contextBridge.exposeInMainWorld('milo', {
     parseTasks: (text: string) => ipcRenderer.invoke('ai:parseTasks', text),
     generateNudge: (driftMinutes: number, currentApp: string) =>
       ipcRenderer.invoke('ai:generateNudge', driftMinutes, currentApp),
+    processPlan: (rawPlan: string, context?: string) =>
+      ipcRenderer.invoke('ai:processPlan', rawPlan, context),
+  },
+
+  // Plan management
+  plan: {
+    apply: (processedPlan: ProcessedPlan) =>
+      ipcRenderer.invoke('plan:apply', processedPlan),
   },
 
   // Nudge management

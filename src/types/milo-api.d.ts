@@ -63,6 +63,42 @@ export interface TaskParserOutput {
   unparsed?: string
 }
 
+// Plan processor types (Haiku agent)
+export interface ProcessedPlan {
+  plan: {
+    title: string
+    summary: string
+    source: string
+  }
+  goals: Array<{
+    title: string
+    description: string
+    timeframe: 'yearly' | 'quarterly' | 'monthly' | 'weekly'
+    suggestedDeadline: string | null
+  }>
+  tasks: Array<{
+    title: string
+    description?: string
+    dueDate: string | null
+    priority: 'high' | 'medium' | 'low'
+    goalIndex: number | null
+    dependsOn: number[]
+  }>
+  clarifications: Array<{
+    item: string
+    question: string
+  }>
+  unparsed?: string
+}
+
+export interface PlanApplyResult {
+  success: boolean
+  goalsCreated: number
+  tasksCreated: number
+  goalIds: string[]
+  taskIds: string[]
+}
+
 // Nudge types (mirrors electron/services/NudgeManager.ts)
 export interface NudgeConfig {
   firstNudgeThresholdMs: number
@@ -167,6 +203,10 @@ export interface MiloAPI {
     eveningReview: (input: EveningReviewInput) => Promise<EveningReviewOutput>
     parseTasks: (text: string) => Promise<TaskParserOutput>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
+    processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+  }
+  plan: {
+    apply: (processedPlan: ProcessedPlan) => Promise<PlanApplyResult>
   }
   nudge: {
     getConfig: () => Promise<NudgeConfig>

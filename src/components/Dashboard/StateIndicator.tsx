@@ -7,30 +7,32 @@ import { useActivityStore } from '@/stores'
 type ActivityState = 'green' | 'amber' | 'red'
 
 export const StateIndicator: React.FC = () => {
-  const { status, isLoading, togglePause, fetchStatus } = useActivityStore()
+  const {
+    currentState: storeState,
+    currentAppName,
+    isPaused,
+    isLoading,
+    toggleMonitoring,
+    getMonitoringStatus,
+  } = useActivityStore()
 
-  const [currentState, setCurrentState] = useState<ActivityState>('amber')
+  const [currentState, setCurrentState] = useState<ActivityState>(storeState)
   const [stateSince, setStateSince] = useState<Date>(new Date())
-  const [currentApp, setCurrentApp] = useState<string>('Unknown')
-
-  // Derive isPaused from store status
-  const isPaused = status?.isPaused ?? false
+  const [currentApp, setCurrentApp] = useState<string>(currentAppName || 'Unknown')
 
   // Calculate duration since state change
   const [duration, setDuration] = useState('0m')
 
   // Fetch initial status
   useEffect(() => {
-    fetchStatus()
-  }, [fetchStatus])
+    getMonitoringStatus()
+  }, [getMonitoringStatus])
 
-  // Update local state from store status
+  // Update local state from store
   useEffect(() => {
-    if (status) {
-      setCurrentState(status.currentState as ActivityState)
-      setCurrentApp(status.currentAppName || 'Unknown')
-    }
-  }, [status])
+    setCurrentState(storeState)
+    setCurrentApp(currentAppName || 'Unknown')
+  }, [storeState, currentAppName])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -89,7 +91,7 @@ export const StateIndicator: React.FC = () => {
 
   const handleTogglePause = async () => {
     try {
-      await togglePause()
+      await toggleMonitoring()
     } catch (error) {
       console.error('Failed to toggle pause:', error)
     }

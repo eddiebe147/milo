@@ -243,6 +243,63 @@ function setupIPC(): void {
     }
   })
 
+  // Plan processing (Haiku agent)
+  ipcMain.handle('ai:processPlan', async (_, rawPlan: string, context?: string) => {
+    try {
+      return await claudeClient.processPlan(rawPlan, context)
+    } catch (error) {
+      console.error('[IPC] Plan processing error:', error)
+      throw error
+    }
+  })
+
+  // Apply processed plan (create goals and tasks)
+  ipcMain.handle('plan:apply', async (_, processedPlan) => {
+    try {
+      const createdGoalIds: string[] = []
+      const createdTaskIds: string[] = []
+
+      // Create goals first
+      for (const goalData of processedPlan.goals) {
+        const goal = goalsRepository.create({
+          title: goalData.title,
+          description: goalData.description,
+          timeframe: goalData.timeframe,
+          targetDate: goalData.suggestedDeadline,
+          status: 'active',
+          parentId: null,
+        })
+        createdGoalIds.push(goal.id)
+      }
+
+      // Create tasks linked to goals
+      for (const taskData of processedPlan.tasks) {
+        const task = tasksRepository.create({
+          title: taskData.title,
+          description: taskData.description,
+          status: 'pending',
+          priority: taskData.priority === 'high' ? 5 : taskData.priority === 'medium' ? 3 : 1,
+          scheduledDate: taskData.dueDate || new Date().toISOString().split('T')[0],
+          goalId: taskData.goalIndex !== null && createdGoalIds[taskData.goalIndex]
+            ? createdGoalIds[taskData.goalIndex]
+            : null,
+        })
+        createdTaskIds.push(task.id)
+      }
+
+      return {
+        success: true,
+        goalsCreated: createdGoalIds.length,
+        tasksCreated: createdTaskIds.length,
+        goalIds: createdGoalIds,
+        taskIds: createdTaskIds,
+      }
+    } catch (error) {
+      console.error('[IPC] Plan apply error:', error)
+      throw error
+    }
+  })
+
   // Nudge management
   ipcMain.handle('nudge:getConfig', () => nudgeManager.getConfig())
   ipcMain.handle('nudge:setConfig', (_, config) => nudgeManager.setConfig(config))
