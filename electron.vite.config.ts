@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // Don't externalize ESM-only packages - they must be bundled
+    plugins: [externalizeDepsPlugin({
+      exclude: ['active-win', 'nanoid']
+    })],
     build: {
       rollupOptions: {
         input: {
