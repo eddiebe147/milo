@@ -1,0 +1,324 @@
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
+import { join } from 'path'
+import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
+import { goalsRepository, tasksRepository, activityRepository, scoresRepository, classificationsRepository } from './repositories'
+import { claudeClient } from './ai/ClaudeClient'
+import type { Goal, Task } from '../src/types'
+import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
+
+// Window references
+let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 400,
+    height: 600,
+    minWidth: 320,
+    minHeight: 480,
+    show: false,
+    frame: false,
+    transparent: true,
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 12, y: 12 },
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
+  })
+
+  mainWindow.on('close', (event) => {
+    // Hide instead of close on macOS
+    if (process.platform === 'darwin') {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
+  // Load the app
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+function createTray(): void {
+  // Create a placeholder tray icon (green by default)
+  const icon = nativeImage.createFromDataURL(
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABpSURBVDiNY2AYBUMHMDIw/P/PwMDwHwj/Q9FQDQxAwMjA8J+RgeE/E1jw////DAwMDP8ZGP7/Z2T4/x/iAiYGhv//mRgY/kN0MTIy/GdkZPgPMw1mGCPQECaYK0ZdMAqGBmBkYPg/CgAAd3UXU5T9z1wAAAAASUVORK5CYII='
+  )
+
+  tray = new Tray(icon)
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show MILO',
+      click: () => {
+        mainWindow?.show()
+        mainWindow?.focus()
+      },
+    },
+    {
+      label: 'Morning Briefing',
+      click: () => {
+        mainWindow?.webContents.send('show-morning-briefing')
+        mainWindow?.show()
+      },
+    },
+    {
+      label: 'Evening Review',
+      click: () => {
+        mainWindow?.webContents.send('show-evening-review')
+        mainWindow?.show()
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Pause Monitoring',
+      type: 'checkbox',
+      checked: false,
+      click: (menuItem) => {
+        mainWindow?.webContents.send('toggle-monitoring', !menuItem.checked)
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Settings',
+      click: () => {
+        mainWindow?.webContents.send('show-settings')
+        mainWindow?.show()
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit MILO',
+      click: () => {
+        app.quit()
+      },
+    },
+  ])
+
+  tray.setToolTip('MILO - Signal-to-Noise Life Planner')
+  tray.setContextMenu(contextMenu)
+
+  // Click to show/hide window
+  tray.on('click', () => {
+    if (mainWindow?.isVisible()) {
+      mainWindow.hide()
+    } else {
+      mainWindow?.show()
+      mainWindow?.focus()
+    }
+  })
+}
+
+// IPC Handlers
+function setupIPC(): void {
+  // Window controls
+  ipcMain.handle('window:minimize', () => {
+    mainWindow?.minimize()
+  })
+
+  ipcMain.handle('window:close', () => {
+    mainWindow?.hide()
+  })
+
+  ipcMain.handle('window:toggle-always-on-top', () => {
+    const isAlwaysOnTop = mainWindow?.isAlwaysOnTop()
+    mainWindow?.setAlwaysOnTop(!isAlwaysOnTop)
+    return !isAlwaysOnTop
+  })
+
+  // State indicator for tray
+  ipcMain.handle('tray:set-state', (_, state: 'green' | 'amber' | 'red') => {
+    // Update tray icon based on state
+    console.log(`Tray state: ${state}`)
+  })
+
+  // Goals CRUD
+  ipcMain.handle('goals:getAll', () => goalsRepository.getAll())
+  ipcMain.handle('goals:getById', (_, id: string) => goalsRepository.getById(id))
+  ipcMain.handle('goals:getHierarchy', () => goalsRepository.getHierarchy())
+  ipcMain.handle('goals:create', (_, goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) =>
+    goalsRepository.create(goal)
+  )
+  ipcMain.handle('goals:update', (_, id: string, updates: Partial<Goal>) =>
+    goalsRepository.update(id, updates)
+  )
+  ipcMain.handle('goals:delete', (_, id: string) => goalsRepository.delete(id))
+
+  // Tasks CRUD
+  ipcMain.handle('tasks:getAll', () => tasksRepository.getAll())
+  ipcMain.handle('tasks:getToday', () => tasksRepository.getToday())
+  ipcMain.handle('tasks:getById', (_, id: string) => tasksRepository.getById(id))
+  ipcMain.handle('tasks:getActive', () => tasksRepository.getActive())
+  ipcMain.handle('tasks:create', (_, task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) =>
+    tasksRepository.create(task)
+  )
+  ipcMain.handle('tasks:update', (_, id: string, updates: Partial<Task>) =>
+    tasksRepository.update(id, updates)
+  )
+  ipcMain.handle('tasks:delete', (_, id: string) => tasksRepository.delete(id))
+  ipcMain.handle('tasks:start', (_, id: string) => tasksRepository.start(id))
+  ipcMain.handle('tasks:complete', (_, id: string) => tasksRepository.complete(id))
+  ipcMain.handle('tasks:defer', (_, id: string) => tasksRepository.defer(id))
+
+  // Activity & Classifications
+  ipcMain.handle('activity:getToday', () => activityRepository.getToday())
+  ipcMain.handle('activity:getSummary', (_, date: string) => activityRepository.getSummary(date))
+  ipcMain.handle('activity:getAppBreakdown', (_, date: string) => activityRepository.getAppBreakdown(date))
+  ipcMain.handle('classifications:getAll', () => classificationsRepository.getAll())
+  ipcMain.handle('classifications:upsert', (_, classification) =>
+    classificationsRepository.upsert(classification)
+  )
+
+  // Scores
+  ipcMain.handle('scores:getToday', () => scoresRepository.getToday())
+  ipcMain.handle('scores:getRecent', (_, days: number) => scoresRepository.getRecent(days))
+  ipcMain.handle('scores:getCurrentStreak', () => scoresRepository.getCurrentStreak())
+  ipcMain.handle('scores:calculate', () => scoringEngine.getTodayScore())
+  ipcMain.handle('scores:getBreakdown', (_, date: string) => scoringEngine.getScoreBreakdown(date))
+
+  // Activity monitoring
+  ipcMain.handle('monitoring:start', () => activityMonitor.start())
+  ipcMain.handle('monitoring:stop', () => activityMonitor.stop())
+  ipcMain.handle('monitoring:pause', () => activityMonitor.pause())
+  ipcMain.handle('monitoring:resume', () => activityMonitor.resume())
+  ipcMain.handle('monitoring:toggle', () => activityMonitor.togglePause())
+  ipcMain.handle('monitoring:status', () => activityMonitor.getStatus())
+
+  // AI / Claude integration
+  ipcMain.handle('ai:initialize', (_, apiKey: string) => {
+    claudeClient.initialize(apiKey)
+    return claudeClient.isInitialized()
+  })
+
+  ipcMain.handle('ai:isInitialized', () => claudeClient.isInitialized())
+
+  ipcMain.handle('ai:morningBriefing', async (_, input: MorningBriefingInput) => {
+    try {
+      return await claudeClient.generateMorningBriefing(input)
+    } catch (error) {
+      console.error('[IPC] Morning briefing error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('ai:eveningReview', async (_, input: EveningReviewInput) => {
+    try {
+      return await claudeClient.generateEveningReview(input)
+    } catch (error) {
+      console.error('[IPC] Evening review error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('ai:parseTasks', async (_, text: string) => {
+    try {
+      const goals = goalsRepository.getAll()
+      return await claudeClient.parseTasks(text, goals)
+    } catch (error) {
+      console.error('[IPC] Task parsing error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('ai:generateNudge', async (_, driftMinutes: number, currentApp: string) => {
+    try {
+      const activeTask = tasksRepository.getActive()
+      return await claudeClient.generateNudge(driftMinutes, currentApp, activeTask || undefined)
+    } catch (error) {
+      console.error('[IPC] Nudge generation error:', error)
+      throw error
+    }
+  })
+
+  // Nudge management
+  ipcMain.handle('nudge:getConfig', () => nudgeManager.getConfig())
+  ipcMain.handle('nudge:setConfig', (_, config) => nudgeManager.setConfig(config))
+  ipcMain.handle('nudge:getDriftStatus', () => nudgeManager.getDriftStatus())
+}
+
+// Initialize activity monitoring
+function initActivityMonitoring(): void {
+  // Set the state detector
+  activityMonitor.setStateDetector(detectState)
+
+  // Set the main window reference for activity monitor
+  if (mainWindow) {
+    activityMonitor.setMainWindow(mainWindow)
+    nudgeManager.setMainWindow(mainWindow)
+  }
+
+  // Wire nudge manager to activity state changes
+  activityMonitor.setOnStateChange(({ state, appName }) => {
+    nudgeManager.onStateChange(state, appName)
+  })
+
+  // Start monitoring
+  activityMonitor.start()
+
+  // Set up periodic nudge check (every 30 seconds)
+  setInterval(() => {
+    nudgeManager.tick()
+  }, 30000)
+}
+
+// App lifecycle
+app.whenReady().then(() => {
+  // Set app user model id for windows
+  electronApp.setAppUserModelId('com.id8labs.milo')
+
+  // Initialize database
+  initDatabase()
+
+  // Default open or close DevTools by F12 in development
+  // and ignore CommandOrControl + R in production.
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
+  })
+
+  createTray()
+  createWindow()
+  setupIPC()
+
+  // Initialize activity monitoring after window is created
+  initActivityMonitoring()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    } else {
+      mainWindow?.show()
+    }
+  })
+})
+
+// macOS: Keep app running when windows are closed
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
+// Cleanup
+app.on('before-quit', () => {
+  // Stop activity monitoring
+  activityMonitor.stop()
+
+  // Close database connection
+  closeDatabase()
+
+  // Cleanup tray
+  tray?.destroy()
+})

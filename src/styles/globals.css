@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+:root {
+  --pipboy-green: #00ff41;
+  --pipboy-green-dim: #00cc33;
+  --pipboy-green-glow: rgba(0, 255, 65, 0.3);
+  --pipboy-amber: #ffb000;
+  --pipboy-amber-dim: #cc8c00;
+  --pipboy-amber-glow: rgba(255, 176, 0, 0.3);
+  --pipboy-red: #ff3333;
+  --pipboy-red-dim: #cc0000;
+  --pipboy-red-glow: rgba(255, 51, 51, 0.3);
+  --pipboy-background: #0a0a0a;
+  --pipboy-surface: #1a1a1a;
+  --pipboy-border: #333333;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  background: transparent;
+  color: var(--pipboy-green);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--pipboy-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pipboy-green-dim);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pipboy-green);
+}
+
+/* CRT Effects */
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.crt-overlay .scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+.crt-overlay .flicker {
+  position: absolute;
+  inset: 0;
+  animation: flicker 0.15s infinite;
+  background: transparent;
+}
+
+.crt-overlay .vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 0.97; }
+  50% { opacity: 1; }
+}
+
+/* Glow effects */
+.glow-low {
+  text-shadow: 0 0 5px currentColor;
+}
+
+.glow-medium {
+  text-shadow:
+    0 0 5px currentColor,
+    0 0 10px currentColor;
+}
+
+.glow-high {
+  text-shadow:
+    0 0 5px currentColor,
+    0 0 10px currentColor,
+    0 0 20px currentColor;
+}
+
+/* Window drag region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Focus states */
+input:focus,
+button:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pipboy-green);
+}
+
+/* Transitions */
+.transition-glow {
+  transition: text-shadow 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* State colors utility classes */
+.state-green {
+  color: var(--pipboy-green);
+  text-shadow: 0 0 10px var(--pipboy-green-glow);
+}
+
+.state-amber {
+  color: var(--pipboy-amber);
+  text-shadow: 0 0 10px var(--pipboy-amber-glow);
+}
+
+.state-red {
+  color: var(--pipboy-red);
+  text-shadow: 0 0 10px var(--pipboy-red-glow);
+}
+
+/* Button base styles */
+.btn-pipboy {
+  @apply px-4 py-2 rounded-sm border border-pipboy-green/50;
+  @apply bg-pipboy-surface hover:bg-pipboy-green/10;
+  @apply text-pipboy-green transition-all duration-200;
+  @apply hover:border-pipboy-green hover:shadow-glow-green;
+  @apply active:scale-95;
+}
+
+.btn-pipboy:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  @apply hover:bg-pipboy-surface hover:border-pipboy-green/50;
+  @apply hover:shadow-none active:scale-100;
+}
+
+/* Card base styles */
+.card-pipboy {
+  @apply bg-pipboy-surface border border-pipboy-border rounded-sm p-4;
+  @apply transition-all duration-200;
+}
+
+.card-pipboy:hover {
+  @apply border-pipboy-green/30;
+}
+
+.card-pipboy-elevated {
+  @apply card-pipboy border-pipboy-green/30 shadow-glow-green;
+}
+
+/* Input base styles */
+.input-pipboy {
+  @apply w-full px-3 py-2 rounded-sm;
+  @apply bg-pipboy-background border border-pipboy-border;
+  @apply text-pipboy-green placeholder-pipboy-green-dim/50;
+  @apply focus:border-pipboy-green focus:shadow-glow-green;
+  @apply transition-all duration-200;
+}
+
+/* Animation classes */
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
