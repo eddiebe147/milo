@@ -1,7 +1,7 @@
 # MILO Pipeline Status
 
 **Project:** MILO - Mission Intelligence Life Operator
-**Current Stage:** Stage 3: Architecture Sketch → Stage 4: Foundation Pour
+**Current Stage:** Stage 6: Integration Pass → Stage 7: Test Coverage
 **Last Updated:** December 28, 2024
 
 ---
@@ -13,10 +13,10 @@
 | 1. Concept Lock | ✅ Complete | "MILO is a Signal-to-Noise Life Planner that helps cut through daily noise and focus on goal-aligned actions" | Dec 28, 2024 |
 | 2. Scope Fence | ✅ Complete | V1 scope defined: Goal hierarchy, Morning/Evening dialogues, Activity monitoring, S/N scoring, Pip-Boy UI | Dec 28, 2024 |
 | 3. Architecture Sketch | ✅ Complete | PRD + Technical Design docs created with full stack specification | Dec 28, 2024 |
-| 4. Foundation Pour | 🔄 In Progress | Scaffolding Electron + React + TypeScript | Dec 28, 2024 |
-| 5. Feature Blocks | ⏳ Pending | | |
-| 6. Integration Pass | ⏳ Pending | | |
-| 7. Test Coverage | ⏳ Pending | | |
+| 4. Foundation Pour | ✅ Complete | Electron + React + TypeScript scaffolded, DB schema, IPC, Pip-Boy UI | Dec 28, 2024 |
+| 5. Feature Blocks | ✅ Complete | All P0 features implemented (see below) | Dec 28, 2024 |
+| 6. Integration Pass | ✅ Complete | All blocks connected, data flows working | Dec 28, 2024 |
+| 7. Test Coverage | 🔄 Next | Need unit, integration, and E2E tests | |
 | 8. Polish & Harden | ⏳ Pending | | |
 | 9. Launch Prep | ⏳ Pending | | |
 | 10. Ship | ⏳ Pending | | |
@@ -26,26 +26,43 @@
 
 ## Current Stage Details
 
-### Stage 4: Foundation Pour
+### Stage 7: Test Coverage (NEXT)
 
-**Checkpoint Question:** "Can we deploy an empty shell?"
+**Checkpoint Question:** "Are all tests green and is coverage sufficient?"
 
-**Tasks:**
-- [ ] Initialize Electron + Vite + React + TypeScript project
-- [ ] Set up Tailwind with Pip-Boy custom theme
-- [ ] Implement CRT effects CSS (scanlines, glow, flicker)
-- [ ] Create base UI components (Button, Card, Input, GlowText)
-- [ ] Set up SQLite database with schema
-- [ ] Menu bar tray integration
-- [ ] Floating dashboard window
-- [ ] Basic IPC communication
+**Required:**
+- [ ] Unit tests for business logic (stores, utils, services)
+- [ ] Integration tests for IPC handlers and API routes
+- [ ] E2E tests for critical user flows (morning briefing, task management, evening review)
+- [ ] All tests passing (`npm test` exits 0)
+- [ ] Coverage threshold met (70%+ for critical paths)
 
-**Exit Criteria:**
-- App launches from `npm run dev`
-- Menu bar icon visible
-- Dashboard window opens/closes
-- Pip-Boy aesthetic visible
-- Database tables created
+---
+
+## Implementation Phases Completed
+
+### Phase 1: Foundation ✅
+- Electron + Vite + React + TypeScript scaffolding
+- SQLite database with full schema
+- IPC communication layer
+- Pip-Boy theme (CRT effects, glow, scanlines)
+- Base UI components
+
+### Phase 2: Intelligence ✅
+- Claude API integration
+- Morning Briefing dialogue system
+- Evening Review dialogue system
+- Task parsing with AI
+- Activity monitoring (state detection)
+- State classification (GREEN/AMBER/RED)
+
+### Phase 3: Feedback ✅ (Just Completed)
+- Drift detection nudge system
+- AI-generated nudge messages
+- Stats dashboard with 7-day trend
+- Streak tracking with milestones
+- Quick capture with AI parsing
+- Nudge toast notifications
 
 ---
 
@@ -53,12 +70,12 @@
 
 ### Core Features (P0)
 1. ✅ Goal Hierarchy System (Beacon → Milestone → Objective → Task)
-2. ⏳ Morning Briefing (AI-powered daily planning)
-3. ⏳ Activity Monitoring (GREEN/AMBER/RED state detection)
-4. ⏳ Drift Detection & Nudges
-5. ⏳ Evening Review (Reflection + scoring)
-6. ⏳ S/N Scoring System (0-100 with gamification)
-7. ⏳ Pip-Boy Desktop UI
+2. ✅ Morning Briefing (AI-powered daily planning)
+3. ✅ Activity Monitoring (GREEN/AMBER/RED state detection)
+4. ✅ Drift Detection & Nudges
+5. ✅ Evening Review (Reflection + scoring)
+6. ✅ S/N Scoring System (0-100 with gamification)
+7. ✅ Pip-Boy Desktop UI
 
 ### Integrations (P1)
 - ⏳ Notion MCP
@@ -79,13 +96,13 @@
 
 | Layer | Choice | Status |
 |-------|--------|--------|
-| Runtime | Electron 28.x | ⏳ |
-| UI | React 18 + TypeScript | ⏳ |
-| Bundler | electron-vite | ⏳ |
-| Styling | TailwindCSS | ⏳ |
-| State | Zustand | ⏳ |
-| Database | better-sqlite3 | ⏳ |
-| AI | Claude API | ⏳ |
+| Runtime | Electron 28.x | ✅ |
+| UI | React 18 + TypeScript | ✅ |
+| Bundler | electron-vite | ✅ |
+| Styling | TailwindCSS | ✅ |
+| State | Zustand | ✅ |
+| Database | better-sqlite3 | ✅ |
+| AI | Claude API | ✅ |
 | Integrations | MCP SDK | ⏳ |
 
 ---
@@ -97,6 +114,23 @@
 
 ---
 
+## Git Branches
+
+| Branch | Purpose | Status |
+|--------|---------|--------|
+| `main` | Stable releases | Phase 1-2 work |
+| `feature/phase-3-feedback` | Phase 3 implementation | ✅ Ready to merge |
+
+---
+
+## Known Issues
+
+| Issue | Severity | Notes |
+|-------|----------|-------|
+| `active-win` native binary path | Medium | Activity monitoring fails in dev mode; needs native module rebuild config |
+
+---
+
 ## Decision Log
 
 | Date | Decision | Rationale |
@@ -105,6 +139,7 @@
 | Dec 28, 2024 | SQLite over cloud DB | Privacy-first, offline capable, simpler architecture |
 | Dec 28, 2024 | Electron over Tauri | Better ecosystem, more mature for macOS tray apps |
 | Dec 28, 2024 | Zustand over Redux | Simpler API, less boilerplate for this scope |
+| Dec 28, 2024 | Exclude ESM packages from externalization | `active-win` and `nanoid` are ESM-only, must be bundled |
 
 ---
 
