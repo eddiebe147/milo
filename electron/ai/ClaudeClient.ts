@@ -6,6 +6,7 @@ import {
   DRIFT_NUDGE_PROMPT,
   PLAN_PROCESSOR_PROMPT,
   CHAT_PROMPT,
+  TASK_ACTION_PROMPT,
 } from './prompts/system'
 import type { Goal, Task, DailyScore } from '../../src/types'
 
@@ -122,6 +123,17 @@ export interface ChatInput {
   message: string
   conversationHistory: ChatMessage[]
   context?: ChatContext
+}
+
+// Task action classification types
+export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+
+export interface TaskActionPlan {
+  actionType: TaskActionType
+  prompt: string
+  projectPath?: string | null
+  searchQueries?: string[]
+  reasoning: string
 }
 
 class ClaudeClient {
@@ -307,6 +319,55 @@ class ClaudeClient {
     return response.content[0].type === 'text'
       ? response.content[0].text.trim()
       : 'Unable to process your request.'
+  }
+
+  // Classify a task and determine the best action to execute it
+  async classifyTaskAction(
+    task: Task,
+    availableProjects: string[]
+  ): Promise<TaskActionPlan> {
+    if (!this.client) {
+      throw new Error('Claude client not initialized. Please set your API key.')
+    }
+
+    // Build context for the classification
+    let userPrompt = `## Task to Analyze
+
+**Title:** ${task.title}
+`
+
+    if (task.description) {
+      userPrompt += `**Description:** ${task.description}\n`
+    }
+
+    if (task.rationale) {
+      userPrompt += `**Rationale:** ${task.rationale}\n`
+    }
+
+    userPrompt += `**Priority:** ${task.priority}\n`
+    userPrompt += `**Status:** ${task.status}\n`
+
+    if (availableProjects.length > 0) {
+      userPrompt += `\n## Available Projects\n`
+      userPrompt += availableProjects.map(p => `- ${p}`).join('\n')
+    }
+
+    userPrompt += `\n\nClassify this task and provide the action plan.`
+
+    const response = await this.client.messages.create({
+      model: 'claude-3-5-haiku-20241022', // Use Haiku for fast classification
+      max_tokens: 512,
+      system: TASK_ACTION_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+
+    return this.parseJsonResponse<TaskActionPlan>(text, {
+      actionType: 'manual',
+      prompt: task.title,
+      reasoning: 'Unable to classify task, defaulting to manual.',
+    })
   }
 
   // Format context for morning briefing

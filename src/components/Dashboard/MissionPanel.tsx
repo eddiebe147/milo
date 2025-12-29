@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react'
-import { Target, CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Target, Loader2, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useTasksStore } from '@/stores'
+import { TaskRow } from './TaskRow'
 
 export const MissionPanel: React.FC = () => {
   const {
@@ -11,9 +12,15 @@ export const MissionPanel: React.FC = () => {
     isLoading,
     error,
     fetchTodaysTasks,
-    startTask,
     completeTask,
+    smartStartTask,
+    getRelatedTasks,
+    isExecuting,
+    executingTaskId,
   } = useTasksStore()
+
+  // Track which task is expanded
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
   // Fetch tasks on mount
   useEffect(() => {
@@ -32,8 +39,16 @@ export const MissionPanel: React.FC = () => {
     await completeTask(taskId)
   }
 
-  const handleStartTask = async (taskId: string) => {
-    await startTask(taskId)
+  const handleSmartStart = async (taskId: string) => {
+    // Use the smart start which classifies and executes the task
+    const result = await smartStartTask(taskId)
+    if (result) {
+      console.log('[MissionPanel] Task execution result:', result)
+    }
+  }
+
+  const handleExpandTask = (taskId: string) => {
+    setExpandedTaskId(prev => prev === taskId ? null : taskId)
   }
 
   // Loading state
@@ -109,101 +124,27 @@ export const MissionPanel: React.FC = () => {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-pipboy-border max-h-[300px] overflow-y-auto">
+          <div className="divide-y divide-pipboy-border max-h-[400px] overflow-y-auto">
             {signalTasks.map(task => {
               const isActive = activeTask?.id === task.id
-              const isCompleted = task.status === 'completed'
-              const isInProgress = task.status === 'in_progress' || isActive
+              const relatedTasks = getRelatedTasks(task)
+              const isTaskExecuting = isExecuting && executingTaskId === task.id
 
               return (
-                <li
+                <TaskRow
                   key={task.id}
-                  className={`
-                    p-3 transition-all duration-200
-                    hover:bg-pipboy-surface/50
-                    ${isInProgress ? 'bg-pipboy-green/5 border-l-2 border-l-pipboy-green' : ''}
-                    ${isCompleted ? 'opacity-60' : ''}
-                  `}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => handleToggleTask(task.id, task.status)}
-                      disabled={isCompleted}
-                      className={`
-                        mt-0.5 transition-all duration-200
-                        ${isCompleted
-                          ? 'text-pipboy-green cursor-default'
-                          : 'text-pipboy-green-dim hover:text-pipboy-green'
-                        }
-                      `}
-                      title={isCompleted ? 'Completed' : 'Mark as complete'}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle size={18} className="fill-pipboy-green/20" />
-                      ) : (
-                        <Circle size={18} />
-                      )}
-                    </button>
-
-                    {/* Task content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`
-                            text-sm
-                            ${isCompleted
-                              ? 'line-through text-pipboy-green-dim'
-                              : 'text-pipboy-green'
-                            }
-                          `}
-                        >
-                          {task.title}
-                        </span>
-                        {isInProgress && !isCompleted && (
-                          <Badge variant="success" size="sm">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Rationale */}
-                      {task.rationale && !isCompleted && (
-                        <p className="text-xs text-pipboy-green-dim mt-1">
-                          → {task.rationale}
-                        </p>
-                      )}
-
-                      {/* Priority indicator */}
-                      {!isCompleted && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`
-                            text-[10px] px-1.5 py-0.5 rounded
-                            ${task.priority >= 4 ? 'bg-pipboy-red/20 text-pipboy-red' :
-                              task.priority >= 3 ? 'bg-pipboy-amber/20 text-pipboy-amber' :
-                              'bg-pipboy-green/20 text-pipboy-green-dim'}
-                          `}>
-                            P{task.priority}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Start button for pending tasks */}
-                    {task.status === 'pending' && !isActive && (
-                      <button
-                        onClick={() => handleStartTask(task.id)}
-                        className="text-xs text-pipboy-green-dim hover:text-pipboy-green transition-colors px-2 py-1 border border-pipboy-border rounded hover:border-pipboy-green/50"
-                        title="Set as current task"
-                      >
-                        Start
-                      </button>
-                    )}
-                  </div>
-                </li>
+                  task={task}
+                  isActive={isActive}
+                  isExpanded={expandedTaskId === task.id}
+                  relatedTasks={relatedTasks}
+                  isExecuting={isTaskExecuting}
+                  onToggleComplete={() => handleToggleTask(task.id, task.status)}
+                  onStart={() => handleSmartStart(task.id)}
+                  onExpand={() => handleExpandTask(task.id)}
+                />
               )
             })}
-          </ul>
+          </div>
         )}
       </CardContent>
     </Card>

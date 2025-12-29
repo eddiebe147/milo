@@ -1,6 +1,24 @@
 import { create } from 'zustand'
 import type { Task } from '../types'
 
+// Import types from preload (available via window.milo)
+export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+
+export interface TaskActionPlan {
+  actionType: TaskActionType
+  prompt: string
+  projectPath?: string | null
+  searchQueries?: string[]
+  reasoning: string
+}
+
+export interface ExecutionResult {
+  success: boolean
+  actionType: TaskActionType
+  message: string
+  error?: string
+}
+
 interface TasksState {
   // Core state
   tasks: Task[] // Today's tasks (legacy, kept for compatibility)
@@ -41,6 +59,15 @@ interface TasksState {
 
   // Actions - Category filtering (works with categoriesStore)
   fetchTasksByCategory: (categoryId: string) => Promise<Task[]>
+
+  // Actions - Smart Task Execution
+  isExecuting: boolean
+  executingTaskId: string | null
+  currentActionPlan: TaskActionPlan | null
+  executionError: string | null
+  smartStartTask: (id: string) => Promise<ExecutionResult | null>
+  classifyTask: (id: string) => Promise<TaskActionPlan | null>
+  getRelatedTasks: (task: Task) => Task[]
 }
 
 // Helper to check if we need to reset morning context (new day)
@@ -66,6 +93,12 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   // Continuity state
   continuityTasks: [],
   hasSeenMorningContext: !shouldResetMorningContext(),
+
+  // Execution state
+  isExecuting: false,
+  executingTaskId: null,
+  currentActionPlan: null,
+  executionError: null,
 
   fetchTasks: async () => {
     set({ isLoading: true, error: null })
@@ -306,5 +339,77 @@ export const useTasksStore = create<TasksState>((set, get) => ({
       set({ error: (error as Error).message })
       return []
     }
+  },
+
+  // ============================
+  // Smart Task Execution
+  // ============================
+
+  classifyTask: async (id: string) => {
+    set({ isExecuting: true, executingTaskId: id, executionError: null })
+    try {
+      const actionPlan = await window.milo.taskExecution.classifyTask(id)
+      set({ currentActionPlan: actionPlan, isExecuting: false })
+      return actionPlan
+    } catch (error) {
+      const message = (error as Error).message
+      set({ executionError: message, isExecuting: false })
+      return null
+    }
+  },
+
+  smartStartTask: async (id: string) => {
+    set({ isExecuting: true, executingTaskId: id, executionError: null, currentActionPlan: null })
+    try {
+      // First, start the task normally (marks as active)
+      const task = await window.milo.tasks.start(id)
+      if (!task) {
+        throw new Error('Failed to start task')
+      }
+
+      // Record work for continuity tracking
+      await window.milo.tasks.recordWork(id)
+
+      // Execute the task using the smart executor
+      const result = await window.milo.taskExecution.executeTask(id)
+
+      // Refresh the signal queue
+      await get().fetchSignalQueue()
+
+      set({ isExecuting: false, executingTaskId: null })
+      return result
+    } catch (error) {
+      const message = (error as Error).message
+      set({ executionError: message, isExecuting: false, executingTaskId: null })
+      return null
+    }
+  },
+
+  getRelatedTasks: (task: Task) => {
+    const { allTasks, signalQueue, backlog } = get()
+    const allAvailable = [...signalQueue, ...backlog, ...allTasks]
+
+    // Deduplicate
+    const taskMap = new Map<string, Task>()
+    allAvailable.forEach(t => {
+      if (t.id !== task.id && t.status !== 'completed') {
+        taskMap.set(t.id, t)
+      }
+    })
+
+    // Priority: same goalId first, then same categoryId
+    const sameGoal: Task[] = []
+    const sameCategory: Task[] = []
+
+    taskMap.forEach(t => {
+      if (task.goalId && t.goalId === task.goalId) {
+        sameGoal.push(t)
+      } else if (task.categoryId && t.categoryId === task.categoryId) {
+        sameCategory.push(t)
+      }
+    })
+
+    // Return goal-related first, then category-related (limit to 5 total)
+    return [...sameGoal, ...sameCategory].slice(0, 5)
   },
 }))

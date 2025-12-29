@@ -9,6 +9,7 @@ import type {
   ProcessedPlan,
 } from './ai/ClaudeClient'
 import type { NudgeEvent } from './services/NudgeManager'
+import type { TaskActionPlan, ExecutionResult } from './services/TaskExecutor'
 
 // Nudge configuration type (matches NudgeManager)
 interface NudgeConfig {
@@ -142,6 +143,12 @@ export interface MiloAPI {
     getConfig: () => Promise<NudgeConfig>
     setConfig: (config: Partial<NudgeConfig>) => Promise<void>
     getDriftStatus: () => Promise<DriftStatus>
+  }
+  taskExecution: {
+    classifyTask: (taskId: string) => Promise<TaskActionPlan>
+    executeTask: (taskId: string) => Promise<ExecutionResult>
+    getAvailableProjects: () => Promise<string[]>
+    hasClaudeCli: () => Promise<boolean>
   }
 }
 
@@ -283,5 +290,13 @@ contextBridge.exposeInMainWorld('milo', {
     getConfig: () => ipcRenderer.invoke('nudge:getConfig'),
     setConfig: (config: Partial<NudgeConfig>) => ipcRenderer.invoke('nudge:setConfig', config),
     getDriftStatus: () => ipcRenderer.invoke('nudge:getDriftStatus'),
+  },
+
+  // Task execution (smart task automation)
+  taskExecution: {
+    classifyTask: (taskId: string) => ipcRenderer.invoke('taskExecution:classifyTask', taskId),
+    executeTask: (taskId: string) => ipcRenderer.invoke('taskExecution:executeTask', taskId),
+    getAvailableProjects: () => ipcRenderer.invoke('taskExecution:getAvailableProjects'),
+    hasClaudeCli: () => ipcRenderer.invoke('taskExecution:hasClaudeCli'),
   },
 } satisfies MiloAPI)

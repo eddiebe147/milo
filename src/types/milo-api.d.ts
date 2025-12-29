@@ -123,6 +123,24 @@ export interface NudgeEvent {
   isAiGenerated: boolean
 }
 
+// Task execution types (mirrors electron/services/TaskExecutor.ts)
+export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+
+export interface TaskActionPlan {
+  actionType: TaskActionType
+  prompt: string
+  projectPath?: string | null
+  searchQueries?: string[]
+  reasoning: string
+}
+
+export interface ExecutionResult {
+  success: boolean
+  actionType: TaskActionType
+  message: string
+  error?: string
+}
+
 export interface MiloAPI {
   window: {
     minimize: () => Promise<void>
@@ -230,6 +248,12 @@ export interface MiloAPI {
     setConfig: (config: Partial<NudgeConfig>) => Promise<void>
     getDriftStatus: () => Promise<DriftStatus>
   }
+  taskExecution: {
+    classifyTask: (taskId: string) => Promise<TaskActionPlan>
+    executeTask: (taskId: string) => Promise<ExecutionResult>
+    getAvailableProjects: () => Promise<string[]>
+    hasClaudeCli: () => Promise<boolean>
+  }
 }
 
 declare global {
@@ -238,4 +262,4 @@ declare global {
   }
 }
 
-export {}
+export { }

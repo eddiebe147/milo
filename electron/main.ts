@@ -6,6 +6,7 @@ import { goalsRepository, tasksRepository, categoriesRepository, activityReposit
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
+import { taskExecutor } from './services/TaskExecutor'
 
 // Window references
 let mainWindow: BrowserWindow | null = null
@@ -355,6 +356,48 @@ function setupIPC(): void {
   ipcMain.handle('nudge:getConfig', () => nudgeManager.getConfig())
   ipcMain.handle('nudge:setConfig', (_, config) => nudgeManager.setConfig(config))
   ipcMain.handle('nudge:getDriftStatus', () => nudgeManager.getDriftStatus())
+
+  // Task execution (smart task automation)
+  ipcMain.handle('taskExecution:classifyTask', async (_, taskId: string) => {
+    try {
+      const task = tasksRepository.getById(taskId)
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`)
+      }
+      const projects = taskExecutor.getProjects()
+      return await claudeClient.classifyTaskAction(task, projects)
+    } catch (error) {
+      console.error('[IPC] Task classification error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('taskExecution:executeTask', async (_, taskId: string) => {
+    try {
+      const task = tasksRepository.getById(taskId)
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`)
+      }
+
+      // First, classify the task
+      const projects = taskExecutor.getProjects()
+      const actionPlan = await claudeClient.classifyTaskAction(task, projects)
+
+      // Then execute based on the plan
+      return await taskExecutor.execute(actionPlan, task)
+    } catch (error) {
+      console.error('[IPC] Task execution error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('taskExecution:getAvailableProjects', () => {
+    return taskExecutor.getProjects()
+  })
+
+  ipcMain.handle('taskExecution:hasClaudeCli', () => {
+    return taskExecutor.hasClaudeCli()
+  })
 }
 
 // Initialize activity monitoring
@@ -399,6 +442,11 @@ app.whenReady().then(() => {
   createTray()
   createWindow()
   setupIPC()
+
+  // Initialize task executor (detects Claude CLI, discovers projects)
+  taskExecutor.initialize().catch(err => {
+    console.error('[Main] Failed to initialize TaskExecutor:', err)
+  })
 
   // Initialize activity monitoring after window is created
   initActivityMonitoring()
