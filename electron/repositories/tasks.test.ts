@@ -1309,7 +1309,6 @@ describe('tasksRepository', () => {
     })
 
     it('includes tasks spanning today', () => {
-      const today = getToday()
       const yesterday = getYesterday()
       const tomorrow = getTomorrow()
 

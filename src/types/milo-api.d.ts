@@ -125,6 +125,7 @@ export interface NudgeEvent {
 
 // Task execution types (mirrors electron/services/TaskExecutor.ts)
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
 export interface TaskActionPlan {
   actionType: TaskActionType
@@ -136,7 +137,7 @@ export interface TaskActionPlan {
 
 export interface ExecutionResult {
   success: boolean
-  actionType: TaskActionType
+  actionType: TaskActionType | ExecutionTarget
   message: string
   error?: string
 }
@@ -267,6 +268,8 @@ export interface MiloAPI {
   taskExecution: {
     classifyTask: (taskId: string) => Promise<TaskActionPlan>
     executeTask: (taskId: string) => Promise<ExecutionResult>
+    executeWithTarget: (target: ExecutionTarget, prompt: string, projectPath: string | null) => Promise<ExecutionResult>
+    generatePrompt: (taskId: string) => Promise<{ prompt: string; projectPath: string | null }>
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
   }

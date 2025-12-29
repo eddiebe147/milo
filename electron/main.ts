@@ -421,6 +421,36 @@ function setupIPC(): void {
     return taskExecutor.hasClaudeCli()
   })
 
+  // New modal-based execution methods
+  ipcMain.handle('taskExecution:executeWithTarget', async (_, target: string, prompt: string, projectPath: string | null) => {
+    try {
+      return await taskExecutor.executeWithTarget(target as any, prompt, projectPath)
+    } catch (error) {
+      console.error('[IPC] Execute with target error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('taskExecution:generatePrompt', async (_, taskId: string) => {
+    try {
+      const task = tasksRepository.getById(taskId)
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`)
+      }
+
+      // Find the best project path for this task
+      const projectPath = await taskExecutor.findProjectForTask(task)
+
+      // Generate the prompt
+      const prompt = await taskExecutor.generateTaskPrompt(task, projectPath)
+
+      return { prompt, projectPath }
+    } catch (error) {
+      console.error('[IPC] Generate prompt error:', error)
+      throw error
+    }
+  })
+
   // ==================== Chat Conversations & Messages ====================
 
   // Conversations

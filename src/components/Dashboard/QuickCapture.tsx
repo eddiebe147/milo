@@ -94,7 +94,7 @@ export const QuickCapture: React.FC = () => {
         showFeedback('success', 'Task added')
         setTaskTitle('')
         setIsExpanded(false)
-      } catch (createError) {
+      } catch {
         showFeedback('error', 'Failed to create task')
       }
     } finally {

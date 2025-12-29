@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useChatStore } from './chatStore'
-import type { ChatConversation, ChatMessage } from './chatStore'
 
 // Mock conversation and message data
 const mockConversation = {

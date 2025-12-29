@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
-import { createTestDatabase, clearTestDatabase, closeTestDatabase, getTestDatabase } from '../test/setup'
+import { createTestDatabase, clearTestDatabase, closeTestDatabase } from '../test/setup'
 import Database from 'better-sqlite3'
 
 // We need to manually set up the module since we can't use vi.mock with dynamic imports

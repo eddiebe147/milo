@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Radio, Loader2, AlertCircle, RefreshCw, Pause } from 'lucide-react'
 import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
+import { TaskExecutionModal, type ExecutionTarget } from './TaskExecutionModal'
+import type { Task } from '@/types'
 
 /**
  * SignalQueue Component
@@ -30,7 +32,6 @@ export const SignalQueue: React.FC = () => {
     error,
     fetchSignalQueue,
     completeTask,
-    smartStartTask,
     getRelatedTasks,
     isExecuting,
     executingTaskId,
@@ -47,6 +48,13 @@ export const SignalQueue: React.FC = () => {
   // Track which task is expanded
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
+  // Modal state
+  const [modalTask, setModalTask] = useState<Task | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
+  const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null)
+  const [projectPath, setProjectPath] = useState<string | null>(null)
+
   // Fetch queue on mount
   useEffect(() => {
     fetchSignalQueue()
@@ -58,11 +66,72 @@ export const SignalQueue: React.FC = () => {
     await completeTask(taskId)
   }
 
-  // Handler: Smart start (classifies and executes)
-  const handleSmartStart = async (taskId: string) => {
-    const result = await smartStartTask(taskId)
-    if (result) {
-      console.log('[SignalQueue] Task execution result:', result)
+  // Handler: Open execution modal (new flow)
+  const handleOpenExecutionModal = async (task: Task) => {
+    setModalTask(task)
+    setIsModalOpen(true)
+    setIsGeneratingPrompt(true)
+    setGeneratedPrompt(null)
+    setProjectPath(null)
+
+    try {
+      // Generate the prompt for this task
+      const result = await window.milo.taskExecution.generatePrompt(task.id)
+      setGeneratedPrompt(result.prompt)
+      setProjectPath(result.projectPath)
+    } catch (error) {
+      console.error('[SignalQueue] Failed to generate prompt:', error)
+      // Set a fallback prompt
+      setGeneratedPrompt(`## Task: ${task.title}\n\n${task.description || 'No description provided.'}\n\nPlease complete this task.`)
+    } finally {
+      setIsGeneratingPrompt(false)
+    }
+  }
+
+  // Handler: Close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setModalTask(null)
+    setGeneratedPrompt(null)
+    setProjectPath(null)
+  }
+
+  // Handler: Execute with selected target
+  const handleExecute = async (target: ExecutionTarget, prompt: string) => {
+    if (!modalTask) return
+
+    try {
+      // First, mark the task as started
+      await window.milo.tasks.start(modalTask.id)
+      await window.milo.tasks.recordWork(modalTask.id)
+
+      // Execute with the selected target
+      const result = await window.milo.taskExecution.executeWithTarget(target, prompt, projectPath)
+      console.log('[SignalQueue] Execution result:', result)
+
+      // Close the modal
+      handleCloseModal()
+
+      // Refresh the queue
+      await fetchSignalQueue()
+    } catch (error) {
+      console.error('[SignalQueue] Execution failed:', error)
+    }
+  }
+
+  // Handler: Regenerate prompt
+  const handleRegeneratePrompt = async () => {
+    if (!modalTask) return
+
+    setIsGeneratingPrompt(true)
+    try {
+      const result = await window.milo.taskExecution.generatePrompt(modalTask.id)
+      setGeneratedPrompt(result.prompt)
+      setProjectPath(result.projectPath)
+    } catch (error) {
+      console.error('[SignalQueue] Failed to regenerate prompt:', error)
+    } finally {
+      setIsGeneratingPrompt(false)
     }
   }
 
@@ -211,13 +280,25 @@ export const SignalQueue: React.FC = () => {
                 relatedTasks={relatedTasks}
                 isExecuting={isTaskExecuting}
                 onToggleComplete={() => handleToggleComplete(task.id, task.status)}
-                onStart={() => handleSmartStart(task.id)}
+                onStart={() => handleOpenExecutionModal(task)}
                 onExpand={() => handleExpandTask(task.id)}
               />
             )
           })}
         </div>
       )}
+
+      {/* Execution Modal */}
+      <TaskExecutionModal
+        isOpen={isModalOpen}
+        task={modalTask}
+        isGeneratingPrompt={isGeneratingPrompt}
+        generatedPrompt={generatedPrompt}
+        projectPath={projectPath}
+        onClose={handleCloseModal}
+        onExecute={handleExecute}
+        onRegeneratePrompt={handleRegeneratePrompt}
+      />
     </div>
   )
 }

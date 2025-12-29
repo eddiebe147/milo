@@ -3,6 +3,7 @@ import type { Task } from '../types'
 
 // Import types from preload (available via window.milo)
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
 export interface TaskActionPlan {
   actionType: TaskActionType
@@ -14,7 +15,7 @@ export interface TaskActionPlan {
 
 export interface ExecutionResult {
   success: boolean
-  actionType: TaskActionType
+  actionType: TaskActionType | ExecutionTarget
   message: string
   error?: string
 }

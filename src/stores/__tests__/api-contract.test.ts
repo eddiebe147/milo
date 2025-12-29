@@ -169,7 +169,7 @@ describe('API Contract Tests', () => {
     })
 
     it('create should call goals.create(goalData)', async () => {
-      const goalData = { title: 'New Goal', timeframe: 'monthly' as const }
+      const goalData = { title: 'New Goal', timeframe: 'monthly' as const, parentId: null, status: 'active' as const }
       await window.milo!.goals.create(goalData)
       expect(mockMilo.goals.create).toHaveBeenCalledWith(goalData)
     })
@@ -217,7 +217,9 @@ describe('API Contract Tests', () => {
       const taskData = {
         title: 'New Task',
         scheduledDate: '2024-01-01',
-        priority: 3
+        priority: 3,
+        status: 'pending' as const,
+        goalId: null
       }
       await window.milo!.tasks.create(taskData)
       expect(mockMilo.tasks.create).toHaveBeenCalledWith(taskData)
@@ -267,7 +269,7 @@ describe('API Contract Tests', () => {
     })
 
     it('create should call categories.create(categoryData)', async () => {
-      const categoryData = { name: 'New Project', color: '#FF0000' }
+      const categoryData = { name: 'New Project', color: '#FF0000', sortOrder: 0, isActive: true }
       await window.milo!.categories.create(categoryData)
       expect(mockMilo.categories.create).toHaveBeenCalledWith(categoryData)
     })
@@ -457,7 +459,7 @@ describe('API Return Value Contract', () => {
       isActive: true,
     })
 
-    const result = await window.milo!.categories.create({ name: 'Test Project', color: '#00FF00' })
+    const result = await window.milo!.categories.create({ name: 'Test Project', color: '#00FF00', sortOrder: 0, isActive: true })
     expect(result).toHaveProperty('id')
     expect(result?.name).toBe('Test Project')
     expect(result?.color).toBe('#00FF00')
@@ -504,10 +506,3 @@ describe('API Return Value Contract', () => {
     expect(result).toHaveProperty('monitoringEnabled')
   })
 })
-
-// Type declaration for window.milo
-declare global {
-  interface Window {
-    milo?: MockMiloAPI
-  }
-}

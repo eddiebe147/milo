@@ -30,6 +30,7 @@ export const ChatBottomPanel: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const wasGeneratingRef = useRef(false)
 
   const {
     messages,
@@ -52,10 +53,13 @@ export const ChatBottomPanel: React.FC = () => {
   }, [messages, isExpanded])
 
   // Auto-expand when AI starts generating (user sent a message)
+  // Use ref to track previous state and avoid setState in effect body
   useEffect(() => {
-    if (isGenerating) {
+    if (isGenerating && !wasGeneratingRef.current) {
+      // Transition from not generating to generating - expand panel
       setIsExpanded(true)
     }
+    wasGeneratingRef.current = isGenerating
   }, [isGenerating])
 
   // Load conversations on mount

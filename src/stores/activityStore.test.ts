@@ -8,9 +8,8 @@ const mockActivityLog: ActivityLog = {
   appName: 'VS Code',
   windowTitle: 'milo - Visual Studio Code',
   state: 'green',
-  startTime: '2024-12-28T10:00:00Z',
-  endTime: '2024-12-28T10:30:00Z',
-  durationMinutes: 30,
+  timestamp: '2024-12-28T10:00:00Z',
+  durationSeconds: 1800,
 }
 
 const mockSummary = {
