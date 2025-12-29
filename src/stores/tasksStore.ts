@@ -272,8 +272,27 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   refreshSignalQueue: async () => {
     // Lightweight refresh - just update queue without setting loading state
+    // Respects refillMode setting: 'endless' = auto-refill, 'daily_reset' = no refill
     try {
-      const { signalQueueSize } = get()
+      const { signalQueueSize, signalQueue: currentQueue } = get()
+
+      // Import settings store to check refill mode
+      // Note: Using dynamic import to avoid circular dependency
+      const settingsStore = (await import('./settingsStore')).useSettingsStore.getState()
+      const refillMode = settingsStore.settings.refillMode
+
+      if (refillMode === 'daily_reset' && currentQueue.length > 0) {
+        // In daily mode, don't refill - just update the backlog
+        // Filter out completed tasks from current queue
+        const remainingQueue = currentQueue.filter(t => t.status !== 'completed')
+        const remainingIds = remainingQueue.map(t => t.id)
+        const backlog = await window.milo.tasks.getBacklog(remainingIds)
+
+        set({ signalQueue: remainingQueue, backlog })
+        return
+      }
+
+      // Endless mode or empty queue - refill to full size
       const signalQueue = await window.milo.tasks.getSignalQueue(signalQueueSize)
       const signalQueueIds = signalQueue.map((t) => t.id)
       const backlog = await window.milo.tasks.getBacklog(signalQueueIds)

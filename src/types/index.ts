@@ -128,6 +128,9 @@ export interface UserSettings {
   alwaysOnTop: boolean
   startMinimized: boolean
   showInDock: boolean
+
+  // Signal Queue behavior
+  refillMode: 'endless' | 'daily_reset'
 }
 
 // State for real-time activity monitoring (matches ActivityMonitor.getStatus())

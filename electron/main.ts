@@ -2,7 +2,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
-import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository } from './repositories'
+import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository, settingsRepository } from './repositories'
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
@@ -357,6 +357,28 @@ function setupIPC(): void {
   ipcMain.handle('nudge:setConfig', (_, config) => nudgeManager.setConfig(config))
   ipcMain.handle('nudge:getDriftStatus', () => nudgeManager.getDriftStatus())
 
+  // Settings management
+  ipcMain.handle('settings:get', () => settingsRepository.get())
+  ipcMain.handle('settings:getApiKey', () => settingsRepository.getApiKey())
+  ipcMain.handle('settings:saveApiKey', (_, apiKey: string | null) => {
+    settingsRepository.saveApiKey(apiKey)
+    // Initialize Claude client if API key is provided
+    if (apiKey) {
+      claudeClient.initialize(apiKey)
+      console.log('[Settings] Claude client initialized with saved API key')
+    }
+    return true
+  })
+  ipcMain.handle('settings:getRefillMode', () => settingsRepository.getRefillMode())
+  ipcMain.handle('settings:saveRefillMode', (_, mode: 'endless' | 'daily_reset') => {
+    settingsRepository.saveRefillMode(mode)
+    return true
+  })
+  ipcMain.handle('settings:update', (_, updates) => {
+    settingsRepository.update(updates)
+    return true
+  })
+
   // Task execution (smart task automation)
   ipcMain.handle('taskExecution:classifyTask', async (_, taskId: string) => {
     try {
@@ -432,6 +454,15 @@ app.whenReady().then(() => {
 
   // Initialize database
   initDatabase()
+
+  // Auto-initialize Claude client if API key exists in settings
+  const savedApiKey = settingsRepository.getApiKey()
+  if (savedApiKey) {
+    claudeClient.initialize(savedApiKey)
+    console.log('[Main] Claude client auto-initialized from saved API key')
+  } else {
+    console.log('[Main] No API key found - Claude client not initialized')
+  }
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

@@ -1,7 +1,8 @@
 // Zustand stores for MILO state management
 export { useGoalsStore } from './goalsStore'
 export { useTasksStore } from './tasksStore'
-export { useCategoriesStore } from './categoriesStore'
+export { useProjectsStore, useCategoriesStore } from './projectsStore'
+export type { Project } from './projectsStore'
 export { useActivityStore } from './activityStore'
 export { useScoresStore } from './scoresStore'
 export { useSettingsStore } from './settingsStore'

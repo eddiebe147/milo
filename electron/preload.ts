@@ -150,6 +150,29 @@ export interface MiloAPI {
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
   }
+  settings: {
+    get: () => Promise<{
+      apiKey: string | null
+      refillMode: 'endless' | 'daily_reset'
+      workStartTime: string
+      workEndTime: string
+      workDays: number[]
+      monitoringEnabled: boolean
+      pollingIntervalMs: number
+      driftAlertEnabled: boolean
+      driftAlertDelayMinutes: number
+      morningBriefingTime: string
+      eveningReviewTime: string
+      alwaysOnTop: boolean
+      startMinimized: boolean
+      showInDock: boolean
+    }>
+    getApiKey: () => Promise<string | null>
+    saveApiKey: (apiKey: string | null) => Promise<boolean>
+    getRefillMode: () => Promise<'endless' | 'daily_reset'>
+    saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
+    update: (updates: Record<string, unknown>) => Promise<boolean>
+  }
 }
 
 // Expose the API to the renderer
@@ -298,5 +321,15 @@ contextBridge.exposeInMainWorld('milo', {
     executeTask: (taskId: string) => ipcRenderer.invoke('taskExecution:executeTask', taskId),
     getAvailableProjects: () => ipcRenderer.invoke('taskExecution:getAvailableProjects'),
     hasClaudeCli: () => ipcRenderer.invoke('taskExecution:hasClaudeCli'),
+  },
+
+  // Settings management
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
+    saveApiKey: (apiKey: string | null) => ipcRenderer.invoke('settings:saveApiKey', apiKey),
+    getRefillMode: () => ipcRenderer.invoke('settings:getRefillMode'),
+    saveRefillMode: (mode: 'endless' | 'daily_reset') => ipcRenderer.invoke('settings:saveRefillMode', mode),
+    update: (updates: Record<string, unknown>) => ipcRenderer.invoke('settings:update', updates),
   },
 } satisfies MiloAPI)

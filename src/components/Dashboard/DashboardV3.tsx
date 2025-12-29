@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { CommandInputSimple } from './CommandInputSimple'
-import { CategoryTabs } from './CategoryTabs'
+import React, { useEffect, useState } from 'react'
+import { ProjectTabs } from './ProjectTabs'
 import { SignalQueue } from './SignalQueue'
-import { BacklogList } from './BacklogList'
+import { ProjectsList } from './ProjectsList'
 import { MorningContext } from './MorningContext'
-import { ChatSlidePanel } from '../Chat/ChatSlidePanel'
-import { useTasksStore, useCategoriesStore } from '@/stores'
+import { AddTaskModal } from './AddTaskModal'
+import { AddProjectModal } from './AddProjectModal'
+import { ChatBottomPanel } from '../Chat/ChatBottomPanel'
+import { useTasksStore, useProjectsStore } from '@/stores'
 
 interface DashboardV3Props {
   onOpenMenu?: () => void
@@ -17,25 +18,25 @@ interface DashboardV3Props {
  * The new front-face design prioritizes task visibility over state display.
  *
  * Layout (top to bottom):
- * 1. COMMAND: Compact input bar with chat toggle
- * 2. FILTERS: Category tabs for filtering tasks
- * 3. CONTEXT: Morning continuity banner (conditional, first visit only)
- * 4. SIGNAL: Top 3-5 priority tasks to focus on NOW
- * 5. BACKLOG: All remaining tasks (collapsible)
- *
- * Plus:
- * - Chat slide-out panel (triggered from command bar)
+ * 1. FILTERS: Project tabs for filtering tasks
+ * 2. CONTEXT: Morning continuity banner (conditional, first visit only)
+ * 3. SIGNAL: Top 3-5 priority tasks to focus on NOW
+ * 4. PROJECTS: Collapsible project cards with their tasks
+ * 5. CHAT: Bottom-docked collapsible chat panel (always visible)
  *
  * What's removed from V2:
  * - HeroState (pause/resume, state indicator)
  * - StatsStrip (gamification scores)
- * - Inline chat history (moved to slide-out panel)
+ * - CommandInputSimple (replaced by ChatBottomPanel)
+ * - ChatSlidePanel (replaced by ChatBottomPanel)
  */
 export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMenu }) => {
-  const [isChatOpen, setIsChatOpen] = useState(false)
-
   const { fetchSignalQueue, fetchAllTasks } = useTasksStore()
-  const { fetchCategories } = useCategoriesStore()
+  const { fetchProjects, activeFilter } = useProjectsStore()
+
+  // Modal states
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
 
   // Initial data fetch on mount
   useEffect(() => {
@@ -43,28 +44,29 @@ export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMen
     Promise.all([
       fetchSignalQueue(),
       fetchAllTasks(),
-      fetchCategories(),
+      fetchProjects(),
     ])
-  }, [fetchSignalQueue, fetchAllTasks, fetchCategories])
+  }, [fetchSignalQueue, fetchAllTasks, fetchProjects])
 
-  const handleOpenChat = () => {
-    setIsChatOpen(true)
-  }
+  // Listen for modal open events from child components
+  useEffect(() => {
+    const handleOpenTaskModal = () => setIsTaskModalOpen(true)
+    const handleOpenProjectModal = () => setIsProjectModalOpen(true)
 
-  const handleCloseChat = () => {
-    setIsChatOpen(false)
-  }
+    document.addEventListener('milo:openTaskModal', handleOpenTaskModal)
+    document.addEventListener('milo:openProjectModal', handleOpenProjectModal)
+
+    return () => {
+      document.removeEventListener('milo:openTaskModal', handleOpenTaskModal)
+      document.removeEventListener('milo:openProjectModal', handleOpenProjectModal)
+    }
+  }, [])
 
   return (
     <div className="h-full flex flex-col bg-pipboy-background">
-      {/* COMMAND: Input bar with chat toggle */}
-      <div className="p-4 border-b border-pipboy-border">
-        <CommandInputSimple onOpenChat={handleOpenChat} />
-      </div>
-
-      {/* FILTERS: Category tabs */}
+      {/* FILTERS: Project tabs */}
       <div className="py-2 border-b border-pipboy-border bg-pipboy-surface/30">
-        <CategoryTabs />
+        <ProjectTabs />
       </div>
 
       {/* Scrollable content area */}
@@ -76,18 +78,35 @@ export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMen
           {/* SIGNAL: Top priority tasks */}
           <SignalQueue />
 
-          {/* BACKLOG: All remaining tasks */}
-          <BacklogList />
+          {/* PROJECTS: Collapsible project cards with tasks */}
+          <ProjectsList />
         </div>
       </div>
 
-      {/* Chat slide-out panel */}
-      <ChatSlidePanel
-        isOpen={isChatOpen}
-        onClose={handleCloseChat}
+      {/* CHAT: Bottom-docked collapsible chat panel */}
+      <ChatBottomPanel />
+
+      {/* Modals */}
+      <AddTaskModal
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        defaultProjectId={activeFilter}
+      />
+      <AddProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
       />
     </div>
   )
+}
+
+// Export modal opener for use by child components
+export const useDashboardModals = () => {
+  // This would be better as context, but for now we use a simple approach
+  return {
+    openTaskModal: () => document.dispatchEvent(new CustomEvent('milo:openTaskModal')),
+    openProjectModal: () => document.dispatchEvent(new CustomEvent('milo:openProjectModal')),
+  }
 }
 
 export default DashboardV3

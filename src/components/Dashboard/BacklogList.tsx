@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useTasksStore, useCategoriesStore } from '../../stores'
+import { useTasksStore, useProjectsStore } from '../../stores'
 import type { Task } from '../../types'
 
 /**
- * BacklogList Component
+ * BacklogList Component (DEPRECATED - use ProjectsList instead)
  *
  * Displays tasks not in the signal queue with:
  * - Collapsible interface (collapsed by default)
@@ -11,13 +11,12 @@ import type { Task } from '../../types'
  * - Terminal aesthetic with pipboy-green accents
  * - Smooth expand/collapse animations
  *
- * Usage:
- * <BacklogList />
+ * @deprecated Use ProjectsList component instead
  */
 export function BacklogList() {
   const [isExpanded, setIsExpanded] = useState(false)
   const { backlog, startTask } = useTasksStore()
-  const { categories, activeFilter } = useCategoriesStore()
+  const { projects, activeFilter } = useProjectsStore()
 
   // Filter backlog by active category if filter is set
   const filteredBacklog = activeFilter
@@ -26,9 +25,9 @@ export function BacklogList() {
 
   const backlogCount = filteredBacklog.length
 
-  // Get category for a task
+  // Get project (category) for a task
   const getCategory = (categoryId: string) => {
-    return categories.find(c => c.id === categoryId)
+    return projects.find((p) => p.id === categoryId)
   }
 
   // Priority labels for accessibility

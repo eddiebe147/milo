@@ -2,7 +2,7 @@
   "mcpServers": {
     "milo": {
       "command": "node",
-      "args": ["./packages/mcp-server/dist/index.js"]
+      "args": ["/Users/eddiebelaval/Development/milo/packages/mcp-server/dist/index.js"]
     }
   }
 }
