@@ -66,7 +66,7 @@ function AppContent() {
   }
 
   return (
-    <div className="h-full w-full bg-pipboy-background flex flex-col overflow-hidden rounded-[24px] border-[12px] border-black">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-pipboy-background">
       {/* CRT Effect Overlay */}
       <CRTOverlay />
 

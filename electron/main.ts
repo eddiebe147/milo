@@ -21,10 +21,11 @@ function createWindow(): void {
     show: false,
     frame: false,
     transparent: true,
-    vibrancy: 'under-window',
-    visualEffectState: 'active',
+    backgroundColor: '#00000000', // Fully transparent
+    hasShadow: true,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 12, y: 12 },
+    roundedCorners: true, // macOS 11+
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,

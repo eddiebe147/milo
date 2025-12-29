@@ -116,7 +116,7 @@ export const ChatBottomPanel: React.FC = () => {
         ${isExpanded ? 'shadow-lg shadow-pipboy-green/10' : ''}
       `}
       style={{
-        height: isExpanded ? 'min(350px, 50vh)' : 'auto',
+        height: isExpanded ? 'min(450px, 60vh)' : 'auto',
       }}
     >
       {isExpanded ? (

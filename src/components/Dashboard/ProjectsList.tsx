@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Folder } from 'lucide-react'
+import { Folder, ChevronDown, ChevronRight } from 'lucide-react'
 import { useProjectsStore, useTasksStore } from '@/stores'
 import { ProjectCard } from './ProjectCard'
 import { AddTaskModal } from './AddTaskModal'
@@ -35,6 +35,9 @@ export const ProjectsList: React.FC = () => {
 
   // Track which project is expanded (null = none, or project id)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // Track section collapsed state (entire projects panel)
+  const [isSectionCollapsed, setIsSectionCollapsed] = useState(false)
 
   // Track AddTaskModal state
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false)
@@ -126,8 +129,16 @@ export const ProjectsList: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      {/* Section Header */}
-      <div className="flex items-center gap-2 px-1">
+      {/* Section Header - Clickable to collapse */}
+      <button
+        onClick={() => setIsSectionCollapsed(!isSectionCollapsed)}
+        className="flex items-center gap-2 px-1 w-full text-left hover:opacity-80 transition-opacity"
+      >
+        {isSectionCollapsed ? (
+          <ChevronRight size={14} className="text-pipboy-green-dim" />
+        ) : (
+          <ChevronDown size={14} className="text-pipboy-green-dim" />
+        )}
         <Folder size={14} className="text-pipboy-green-dim" />
         <span className="text-pipboy-green-dim font-mono text-xs tracking-wide uppercase">
           Projects
@@ -135,22 +146,24 @@ export const ProjectsList: React.FC = () => {
         <span className="text-pipboy-green-dim/60 font-mono text-[10px]">
           ({totalIncompleteTasks} task{totalIncompleteTasks !== 1 ? 's' : ''})
         </span>
-      </div>
+      </button>
 
-      {/* Project Cards */}
-      <div className="space-y-2">
-        {visibleProjects.map(project => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            tasks={tasksByProject[project.id] || []}
-            isExpanded={expandedId === project.id}
-            onToggleExpand={() => handleToggleExpand(project.id)}
-            onAddTask={handleAddTask}
-            onDelete={(id) => deleteProject(id)}
-          />
-        ))}
-      </div>
+      {/* Project Cards - Collapsible */}
+      {!isSectionCollapsed && (
+        <div className="space-y-2">
+          {visibleProjects.map(project => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              tasks={tasksByProject[project.id] || []}
+              isExpanded={expandedId === project.id}
+              onToggleExpand={() => handleToggleExpand(project.id)}
+              onAddTask={handleAddTask}
+              onDelete={(id) => deleteProject(id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Add Task Modal */}
       <AddTaskModal
