@@ -19,11 +19,28 @@ export interface Task {
   title: string
   description?: string
   goalId: string | null // linked goal
+  categoryId?: string | null // linked category/project (optional, defaults to null)
   status: 'pending' | 'in_progress' | 'completed' | 'deferred'
   priority: number // 1-5, AI suggested
   rationale?: string // AI explanation of why this matters
-  scheduledDate: string // ISO date
+  scheduledDate: string // ISO date (legacy, use startDate/endDate)
+  startDate?: string // ISO date - when task begins (defaults to scheduledDate)
+  endDate?: string // ISO date - when task should be done (defaults to scheduledDate)
+  estimatedDays?: number // how many days task is expected to take (defaults to 1)
+  daysWorked?: number // how many days user has worked on this (defaults to 0)
+  lastWorkedDate?: string // ISO date - last day user worked on this
   completedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Categories/Projects (simple flat list)
+export interface Category {
+  id: string
+  name: string
+  color: string // hex color for UI
+  sortOrder: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }

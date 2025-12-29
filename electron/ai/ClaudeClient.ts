@@ -5,6 +5,7 @@ import {
   TASK_PARSER_PROMPT,
   DRIFT_NUDGE_PROMPT,
   PLAN_PROCESSOR_PROMPT,
+  CHAT_PROMPT,
 } from './prompts/system'
 import type { Goal, Task, DailyScore } from '../../src/types'
 
@@ -97,6 +98,30 @@ export interface ProcessedPlan {
     question: string
   }>
   unparsed?: string
+}
+
+// Chat input types
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatContext {
+  goals?: Goal[]
+  todayTasks?: Task[]
+  activeTask?: Task
+  dailyScore?: DailyScore
+  activitySummary?: {
+    greenMinutes: number
+    amberMinutes: number
+    redMinutes: number
+  }
+}
+
+export interface ChatInput {
+  message: string
+  conversationHistory: ChatMessage[]
+  context?: ChatContext
 }
 
 class ClaudeClient {
@@ -248,6 +273,42 @@ class ClaudeClient {
       : 'Time to refocus?'
   }
 
+  // Chat with MILO
+  async chat(input: ChatInput): Promise<string> {
+    if (!this.client) {
+      throw new Error('Claude client not initialized. Please set your API key.')
+    }
+
+    // Build system message with context
+    let systemPrompt = CHAT_PROMPT
+    if (input.context) {
+      systemPrompt += '\n\n' + this.formatChatContext(input.context)
+    }
+
+    // Build conversation messages
+    const messages: Anthropic.Messages.MessageParam[] = [
+      ...input.conversationHistory.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+      {
+        role: 'user' as const,
+        content: input.message,
+      },
+    ]
+
+    const response = await this.client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages,
+    })
+
+    return response.content[0].type === 'text'
+      ? response.content[0].text.trim()
+      : 'Unable to process your request.'
+  }
+
   // Format context for morning briefing
   private formatMorningBriefingContext(input: MorningBriefingInput): string {
     const goalsByTimeframe = {
@@ -319,6 +380,60 @@ class ClaudeClient {
     prompt += `\nProvide the evening review analysis.`
 
     return prompt
+  }
+
+  // Format context for chat
+  private formatChatContext(context: ChatContext): string {
+    let contextStr = `## Current Context\n\n`
+
+    if (context.goals && context.goals.length > 0) {
+      const goalsByTimeframe = {
+        yearly: context.goals.filter((g) => g.timeframe === 'yearly'),
+        quarterly: context.goals.filter((g) => g.timeframe === 'quarterly'),
+        monthly: context.goals.filter((g) => g.timeframe === 'monthly'),
+        weekly: context.goals.filter((g) => g.timeframe === 'weekly'),
+      }
+
+      if (goalsByTimeframe.yearly.length > 0) {
+        contextStr += `### Long-term Beacons\n${goalsByTimeframe.yearly.map((g) => `- ${g.title}`).join('\n')}\n\n`
+      }
+      if (goalsByTimeframe.quarterly.length > 0) {
+        contextStr += `### Active Milestones\n${goalsByTimeframe.quarterly.map((g) => `- ${g.title}${g.targetDate ? ` (Target: ${g.targetDate})` : ''}`).join('\n')}\n\n`
+      }
+      if (goalsByTimeframe.weekly.length > 0) {
+        contextStr += `### This Week's Objectives\n${goalsByTimeframe.weekly.map((g) => `- ${g.title}`).join('\n')}\n\n`
+      }
+    }
+
+    if (context.todayTasks && context.todayTasks.length > 0) {
+      contextStr += `### Today's Tasks\n`
+      context.todayTasks.forEach((t) => {
+        const status = t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '→' : '○'
+        contextStr += `${status} ${t.title}${t.priority >= 4 ? ' [SIGNAL]' : ''}\n`
+      })
+      contextStr += '\n'
+    }
+
+    if (context.activeTask) {
+      contextStr += `### Currently Active\n→ ${context.activeTask.title}\n\n`
+    }
+
+    if (context.activitySummary) {
+      const { greenMinutes, amberMinutes, redMinutes } = context.activitySummary
+      const total = greenMinutes + amberMinutes + redMinutes
+      contextStr += `### Today's Activity\n`
+      contextStr += `- Focus time: ${greenMinutes} min (${total > 0 ? Math.round((greenMinutes / total) * 100) : 0}%)\n`
+      contextStr += `- Adjacent time: ${amberMinutes} min\n`
+      contextStr += `- Drift time: ${redMinutes} min\n\n`
+    }
+
+    if (context.dailyScore) {
+      contextStr += `### Daily Score\n`
+      contextStr += `- Score: ${context.dailyScore.score}/100\n`
+      contextStr += `- Streak: ${context.dailyScore.streakDay} days\n\n`
+    }
+
+    return contextStr
   }
 
   // Parse JSON response with fallback

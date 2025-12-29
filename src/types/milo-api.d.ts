@@ -1,5 +1,5 @@
 // Global type declaration for the milo API exposed via contextBridge
-import type { Goal, Task, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState, ScoreBreakdown } from './index'
+import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState, ScoreBreakdown } from './index'
 
 // AI input/output types (mirrors electron/ai/ClaudeClient.ts)
 export interface MorningBriefingInput {
@@ -159,6 +159,22 @@ export interface MiloAPI {
     start: (id: string) => Promise<Task | null>
     complete: (id: string) => Promise<Task | null>
     defer: (id: string) => Promise<Task | null>
+    // Signal Queue & Continuity methods
+    getAllIncomplete: () => Promise<Task[]>
+    getByCategory: (categoryId: string) => Promise<Task[]>
+    getSignalQueue: (limit?: number) => Promise<Task[]>
+    getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
+    getWorkedYesterday: () => Promise<Task[]>
+    recordWork: (id: string) => Promise<Task | null>
+  }
+  categories: {
+    getAll: () => Promise<Category[]>
+    getActive: () => Promise<Category[]>
+    getById: (id: string) => Promise<Category | null>
+    create: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Category | null>
+    update: (id: string, updates: Partial<Category>) => Promise<Category | null>
+    delete: (id: string) => Promise<boolean>
+    reorder: (orderedIds: string[]) => Promise<void>
   }
   activity: {
     getToday: () => Promise<ActivityLog[]>
@@ -204,6 +220,7 @@ export interface MiloAPI {
     parseTasks: (text: string) => Promise<TaskParserOutput>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
     processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>
   }
   plan: {
     apply: (processedPlan: ProcessedPlan) => Promise<PlanApplyResult>

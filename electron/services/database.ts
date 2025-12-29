@@ -33,6 +33,9 @@ export function initDatabase(): Database.Database {
   // Create tables
   createTables(db)
 
+  // Run migrations for schema updates
+  runMigrations(db)
+
   // Seed default app classifications
   seedDefaultClassifications(db)
 
@@ -165,6 +168,87 @@ function createTables(database: Database.Database): void {
   database.prepare(`
     INSERT OR IGNORE INTO user_settings (id) VALUES (1)
   `).run()
+}
+
+// Run schema migrations (versioned updates)
+function runMigrations(database: Database.Database): void {
+  const version = database.pragma('user_version', { simple: true }) as number
+  console.log(`[Database] Current schema version: ${version}`)
+
+  if (version < 1) {
+    console.log('[Database] Running migration v1: Add categories and multi-day task support')
+
+    // Create categories table (simple flat list)
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT DEFAULT '#00ff41',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run()
+
+    // Create index for active categories
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active)
+    `).run()
+
+    // Insert default "Inbox" category
+    database.prepare(`
+      INSERT OR IGNORE INTO categories (id, name, color, sort_order)
+      VALUES ('inbox', 'Inbox', '#00ff41', 0)
+    `).run()
+
+    // Add new columns to tasks table for multi-day support and categories
+    // SQLite requires individual ALTER TABLE statements
+    const taskColumns = [
+      'category_id TEXT REFERENCES categories(id) ON DELETE SET NULL',
+      'start_date TEXT',
+      'end_date TEXT',
+      'estimated_days INTEGER DEFAULT 1',
+      'days_worked INTEGER DEFAULT 0',
+      'last_worked_date TEXT',
+    ]
+
+    for (const column of taskColumns) {
+      try {
+        database.prepare(`ALTER TABLE tasks ADD COLUMN ${column}`).run()
+      } catch (e) {
+        // Column might already exist, ignore error
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        if (!errorMessage.includes('duplicate column')) {
+          console.warn(`[Database] Migration warning: ${errorMessage}`)
+        }
+      }
+    }
+
+    // Migrate existing data: set start_date and end_date from scheduled_date
+    database.prepare(`
+      UPDATE tasks
+      SET start_date = scheduled_date,
+          end_date = scheduled_date
+      WHERE start_date IS NULL
+    `).run()
+
+    // Create indexes for new columns
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category_id)
+    `).run()
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_date_range ON tasks(start_date, end_date)
+    `).run()
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_last_worked ON tasks(last_worked_date)
+    `).run()
+
+    database.pragma('user_version = 1')
+    console.log('[Database] Migration v1 complete')
+  }
+
+  // Future migrations go here (if version < 2, if version < 3, etc.)
 }
 
 // Default app classifications for common productivity apps

@@ -2,7 +2,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
-import { goalsRepository, tasksRepository, activityRepository, scoresRepository, classificationsRepository } from './repositories'
+import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository } from './repositories'
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
@@ -173,6 +173,23 @@ function setupIPC(): void {
   ipcMain.handle('tasks:complete', (_, id: string) => tasksRepository.complete(id))
   ipcMain.handle('tasks:defer', (_, id: string) => tasksRepository.defer(id))
 
+  // New task methods for signal queue & continuity
+  ipcMain.handle('tasks:getAllIncomplete', () => tasksRepository.getAllIncomplete())
+  ipcMain.handle('tasks:getByCategory', (_, categoryId: string) => tasksRepository.getByCategory(categoryId))
+  ipcMain.handle('tasks:getSignalQueue', (_, limit?: number) => tasksRepository.getSignalQueue(limit))
+  ipcMain.handle('tasks:getBacklog', (_, signalQueueIds: string[]) => tasksRepository.getBacklog(signalQueueIds))
+  ipcMain.handle('tasks:getWorkedYesterday', () => tasksRepository.getWorkedYesterday())
+  ipcMain.handle('tasks:recordWork', (_, id: string) => tasksRepository.recordWork(id))
+
+  // Categories CRUD
+  ipcMain.handle('categories:getAll', () => categoriesRepository.getAll())
+  ipcMain.handle('categories:getActive', () => categoriesRepository.getActive())
+  ipcMain.handle('categories:getById', (_, id: string) => categoriesRepository.getById(id))
+  ipcMain.handle('categories:create', (_, category) => categoriesRepository.create(category))
+  ipcMain.handle('categories:update', (_, id: string, updates) => categoriesRepository.update(id, updates))
+  ipcMain.handle('categories:delete', (_, id: string) => categoriesRepository.delete(id))
+  ipcMain.handle('categories:reorder', (_, orderedIds: string[]) => categoriesRepository.reorder(orderedIds))
+
   // Activity & Classifications
   ipcMain.handle('activity:getToday', () => activityRepository.getToday())
   ipcMain.handle('activity:getSummary', (_, date: string) => activityRepository.getSummary(date))
@@ -249,6 +266,40 @@ function setupIPC(): void {
       return await claudeClient.processPlan(rawPlan, context)
     } catch (error) {
       console.error('[IPC] Plan processing error:', error)
+      throw error
+    }
+  })
+
+  // Chat with MILO
+  ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> }) => {
+    try {
+      // Gather context
+      const goals = goalsRepository.getAll()
+      const todayTasks = tasksRepository.getToday()
+      const activeTask = tasksRepository.getActive()
+      const dailyScore = scoresRepository.getToday()
+
+      // Get activity summary
+      const today = new Date().toISOString().split('T')[0]
+      const activitySummary = activityRepository.getSummary(today)
+
+      return await claudeClient.chat({
+        message: input.message,
+        conversationHistory: input.conversationHistory,
+        context: {
+          goals,
+          todayTasks,
+          activeTask: activeTask || undefined,
+          dailyScore: dailyScore || undefined,
+          activitySummary: {
+            greenMinutes: activitySummary.green,
+            amberMinutes: activitySummary.amber,
+            redMinutes: activitySummary.red,
+          },
+        },
+      })
+    } catch (error) {
+      console.error('[IPC] Chat error:', error)
       throw error
     }
   })

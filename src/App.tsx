@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Dashboard } from '@/components/Dashboard/Dashboard'
+import { DashboardV3 } from '@/components/Dashboard/DashboardV3'
 import { MorningBriefing, EveningReview } from '@/components/Dialogue'
 import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
@@ -65,7 +65,7 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
         {currentView === 'dashboard' && (
-          <Dashboard onOpenPlanImport={() => setCurrentView('plan-import')} />
+          <DashboardV3 onOpenMenu={() => setCurrentView('settings')} />
         )}
         {currentView === 'plan-import' && (
           <PlanImporter onClose={() => setCurrentView('dashboard')} />

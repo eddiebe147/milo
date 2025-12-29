@@ -193,6 +193,26 @@ textarea:focus {
   @apply transition-all duration-200;
 }
 
+/* Custom scrollbar for specific components */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--pipboy-background);
+  border-left: 1px solid var(--pipboy-border);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--pipboy-green-dim);
+  border-radius: 4px;
+  border-left: 2px solid var(--pipboy-background);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--pipboy-green);
+}
+
 /* Animation classes */
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;

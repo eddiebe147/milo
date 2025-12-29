@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import type { Goal, Task, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from '../src/types'
+import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from '../src/types'
 import type {
   MorningBriefingInput,
   MorningBriefingOutput,
@@ -74,6 +74,22 @@ export interface MiloAPI {
     start: (id: string) => Promise<Task | null>
     complete: (id: string) => Promise<Task | null>
     defer: (id: string) => Promise<Task | null>
+    // New methods for signal queue & continuity
+    getAllIncomplete: () => Promise<Task[]>
+    getByCategory: (categoryId: string) => Promise<Task[]>
+    getSignalQueue: (limit?: number) => Promise<Task[]>
+    getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
+    getWorkedYesterday: () => Promise<Task[]>
+    recordWork: (id: string) => Promise<Task | null>
+  }
+  categories: {
+    getAll: () => Promise<Category[]>
+    getActive: () => Promise<Category[]>
+    getById: (id: string) => Promise<Category | null>
+    create: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Category | null>
+    update: (id: string, updates: Partial<Category>) => Promise<Category | null>
+    delete: (id: string) => Promise<boolean>
+    reorder: (orderedIds: string[]) => Promise<void>
   }
   activity: {
     getToday: () => Promise<ActivityLog[]>
@@ -111,6 +127,7 @@ export interface MiloAPI {
     parseTasks: (text: string) => Promise<TaskParserOutput>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
     processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>
   }
   plan: {
     apply: (processedPlan: ProcessedPlan) => Promise<{
@@ -184,6 +201,26 @@ contextBridge.exposeInMainWorld('milo', {
     start: (id: string) => ipcRenderer.invoke('tasks:start', id),
     complete: (id: string) => ipcRenderer.invoke('tasks:complete', id),
     defer: (id: string) => ipcRenderer.invoke('tasks:defer', id),
+    // New methods for signal queue & continuity
+    getAllIncomplete: () => ipcRenderer.invoke('tasks:getAllIncomplete'),
+    getByCategory: (categoryId: string) => ipcRenderer.invoke('tasks:getByCategory', categoryId),
+    getSignalQueue: (limit?: number) => ipcRenderer.invoke('tasks:getSignalQueue', limit),
+    getBacklog: (signalQueueIds: string[]) => ipcRenderer.invoke('tasks:getBacklog', signalQueueIds),
+    getWorkedYesterday: () => ipcRenderer.invoke('tasks:getWorkedYesterday'),
+    recordWork: (id: string) => ipcRenderer.invoke('tasks:recordWork', id),
+  },
+
+  // Categories CRUD
+  categories: {
+    getAll: () => ipcRenderer.invoke('categories:getAll'),
+    getActive: () => ipcRenderer.invoke('categories:getActive'),
+    getById: (id: string) => ipcRenderer.invoke('categories:getById', id),
+    create: (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) =>
+      ipcRenderer.invoke('categories:create', category),
+    update: (id: string, updates: Partial<Category>) =>
+      ipcRenderer.invoke('categories:update', id, updates),
+    delete: (id: string) => ipcRenderer.invoke('categories:delete', id),
+    reorder: (orderedIds: string[]) => ipcRenderer.invoke('categories:reorder', orderedIds),
   },
 
   // Activity & Classifications
@@ -231,6 +268,8 @@ contextBridge.exposeInMainWorld('milo', {
       ipcRenderer.invoke('ai:generateNudge', driftMinutes, currentApp),
     processPlan: (rawPlan: string, context?: string) =>
       ipcRenderer.invoke('ai:processPlan', rawPlan, context),
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+      ipcRenderer.invoke('ai:chat', { message, conversationHistory }),
   },
 
   // Plan management
