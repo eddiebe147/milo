@@ -1,6 +1,6 @@
 {
   "name": "milo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MILO - Mission Intelligence Life Operator: A Signal-to-Noise Life Planner",
   "main": "./out/main/index.js",
   "type": "module",

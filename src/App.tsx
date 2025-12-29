@@ -6,8 +6,7 @@ import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
-import { ThemeSettings } from '@/components/Settings/ThemeSettings'
-import { ApiKeySettings } from '@/components/Settings/ApiKeySettings'
+import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
 import { useNudgeStore, useAIStore } from '@/stores'
 import { useThemeColors } from '@/hooks/useThemeColors'
 import { ModalProvider, useModal } from '@/contexts/ModalContext'
@@ -67,7 +66,7 @@ function AppContent() {
   }
 
   return (
-    <div className="h-full w-full bg-pipboy-background flex flex-col overflow-hidden rounded-lg">
+    <div className="h-full w-full bg-pipboy-background flex flex-col overflow-hidden rounded-[24px] border-[12px] border-black">
       {/* CRT Effect Overlay */}
       <CRTOverlay />
 
@@ -83,16 +82,7 @@ function AppContent() {
           <PlanImporter onClose={() => setCurrentView('dashboard')} />
         )}
         {currentView === 'settings' && (
-          <div className="p-4 text-pipboy-green">
-            <h2 className="text-xl glow-medium mb-4">Settings</h2>
-            <p className="text-pipboy-green-dim">Coming soon...</p>
-            <button
-              className="btn-pipboy mt-4"
-              onClick={() => setCurrentView('dashboard')}
-            >
-              Back to Dashboard
-            </button>
-          </div>
+          <SettingsPage onBack={() => setCurrentView('dashboard')} />
         )}
       </main>
 

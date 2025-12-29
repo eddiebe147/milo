@@ -30,7 +30,7 @@ import { AddTaskModal } from './AddTaskModal'
  * <ProjectsList />
  */
 export const ProjectsList: React.FC = () => {
-  const { projects, activeFilter, isLoading } = useProjectsStore()
+  const { projects, activeFilter, isLoading, deleteProject } = useProjectsStore()
   const { allTasks } = useTasksStore()
 
   // Track which project is expanded (null = none, or project id)
@@ -147,6 +147,7 @@ export const ProjectsList: React.FC = () => {
             isExpanded={expandedId === project.id}
             onToggleExpand={() => handleToggleExpand(project.id)}
             onAddTask={handleAddTask}
+            onDelete={(id) => deleteProject(id)}
           />
         ))}
       </div>

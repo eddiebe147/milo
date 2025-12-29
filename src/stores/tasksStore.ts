@@ -51,7 +51,7 @@ interface TasksState {
   fetchAllTasks: () => Promise<void>
   fetchSignalQueue: () => Promise<void>
   refreshSignalQueue: () => Promise<void> // Auto-refill after completion
-  setSignalQueueSize: (size: number) => void
+  setSignalQueueSize: (size: number) => Promise<void>
   reorderSignalQueue: (taskIds: string[]) => Promise<void>
 
   // Actions - Continuity
@@ -305,12 +305,19 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     }
   },
 
-  setSignalQueueSize: (size: number) => {
+  setSignalQueueSize: async (size: number) => {
     // Clamp to valid range (3-5)
     const validSize = Math.max(3, Math.min(5, size))
     set({ signalQueueSize: validSize })
-    // Refresh queue with new size
-    get().refreshSignalQueue()
+    // Fetch new queue with new size directly (bypasses refillMode logic)
+    try {
+      const signalQueue = await window.milo.tasks.getSignalQueue(validSize)
+      const signalQueueIds = signalQueue.map((t) => t.id)
+      const backlog = await window.milo.tasks.getBacklog(signalQueueIds)
+      set({ signalQueue, backlog })
+    } catch (error) {
+      set({ error: (error as Error).message })
+    }
   },
 
   reorderSignalQueue: async (taskIds: string[]) => {

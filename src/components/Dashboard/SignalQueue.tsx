@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Radio, Loader2, AlertCircle, RefreshCw, Pause } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Radio, Loader2, AlertCircle, RefreshCw, Pause, Filter } from 'lucide-react'
 import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
 import { TaskExecutionModal, type ExecutionTarget } from './TaskExecutionModal'
@@ -34,9 +34,12 @@ interface SortableTaskRowProps {
   isExpanded: boolean
   relatedTasks: Task[]
   isExecuting: boolean
+  projectColor?: string
+  projectName?: string
   onToggleComplete: () => void
   onStart: () => void
   onExpand: () => void
+  onDelete: () => void
 }
 
 const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
@@ -63,17 +66,21 @@ const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      {/* Invisible drag handle overlay on left side */}
-      <div className="relative">
+      {/* Task row with drag handle on the far left */}
+      <div className="flex items-stretch">
+        {/* Drag handle - narrow strip on left edge */}
         <div
           {...attributes}
           {...listeners}
-          className="absolute left-0 top-0 bottom-0 w-8 cursor-grab active:cursor-grabbing z-20 hover:bg-pipboy-green/5 focus:bg-pipboy-green/10 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-pipboy-green/50"
+          className="w-2 flex-shrink-0 cursor-grab active:cursor-grabbing bg-pipboy-border/20 hover:bg-pipboy-green/20 focus:bg-pipboy-green/30 focus:outline-none transition-colors"
           aria-label="Drag to reorder task. Use arrow keys when focused to move."
           role="button"
           tabIndex={0}
         />
-        <TaskRow {...props} />
+        {/* Task content */}
+        <div className="flex-1">
+          <TaskRow {...props} />
+        </div>
       </div>
     </div>
   )
@@ -107,15 +114,15 @@ export const SignalQueue: React.FC = () => {
     error,
     fetchSignalQueue,
     completeTask,
+    deleteTask,
     getRelatedTasks,
     isExecuting,
     executingTaskId,
     reorderSignalQueue,
   } = useTasksStore()
 
-  // Projects store for category badges (future use)
-  const _projectsStore = useProjectsStore()
-  void _projectsStore // Suppress unused warning - will use for project display
+  // Projects store for color coding and filtering
+  const { projects, getProject } = useProjectsStore()
 
   // Settings store for refill mode
   const { settings, toggleRefillMode } = useSettingsStore()
@@ -123,6 +130,15 @@ export const SignalQueue: React.FC = () => {
 
   // Track which task is expanded
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+
+  // Project filter state (null = all projects)
+  const [filterProjectId, setFilterProjectId] = useState<string | null>(null)
+
+  // Filter tasks by project
+  const filteredQueue = useMemo(() => {
+    if (!filterProjectId) return signalQueue
+    return signalQueue.filter(task => task.categoryId === filterProjectId)
+  }, [signalQueue, filterProjectId])
 
   // Modal state
   const [modalTask, setModalTask] = useState<Task | null>(null)
@@ -217,8 +233,8 @@ export const SignalQueue: React.FC = () => {
   }
 
   // Handler: Adjust queue size
-  const handleSizeChange = (size: number) => {
-    setSignalQueueSize(size)
+  const handleSizeChange = async (size: number) => {
+    await setSignalQueueSize(size)
   }
 
   // Setup drag-and-drop sensors
@@ -309,8 +325,8 @@ export const SignalQueue: React.FC = () => {
           </span>
         </div>
 
-        {/* Controls row: Size slider + Refill mode */}
-        <div className="flex items-center justify-between">
+        {/* Controls row: Size slider + Project filter + Refill mode */}
+        <div className="flex items-center justify-between gap-2">
           {/* Size slider */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-pipboy-green-dim">SIZE:</span>
@@ -331,6 +347,24 @@ export const SignalQueue: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Project filter dropdown */}
+          <div className="flex items-center gap-1.5">
+            <Filter size={10} className="text-pipboy-green-dim" />
+            <select
+              value={filterProjectId || ''}
+              onChange={(e) => setFilterProjectId(e.target.value || null)}
+              className="text-[10px] px-1.5 py-0.5 rounded-sm bg-pipboy-surface border border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30 focus:border-pipboy-green/50 focus:outline-none cursor-pointer"
+              style={{ maxWidth: '80px' }}
+            >
+              <option value="">All</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Refill mode toggle */}
@@ -365,11 +399,13 @@ export const SignalQueue: React.FC = () => {
       </div>
 
       {/* Task queue with drag-and-drop */}
-      {signalQueue.length === 0 ? (
+      {filteredQueue.length === 0 ? (
         <div className="p-6 text-center text-pipboy-green-dim">
-          <p className="text-xs">No tasks in queue.</p>
+          <p className="text-xs">
+            {filterProjectId ? 'No tasks from this project in queue.' : 'No tasks in queue.'}
+          </p>
           <p className="text-[10px] mt-1 opacity-70">
-            Create tasks to populate the signal queue
+            {filterProjectId ? 'Clear filter or add tasks to this project' : 'Create tasks to populate the signal queue'}
           </p>
         </div>
       ) : (
@@ -380,14 +416,15 @@ export const SignalQueue: React.FC = () => {
           modifiers={[restrictToVerticalAxis]}
         >
           <SortableContext
-            items={signalQueue.map((task) => task.id)}
+            items={filteredQueue.map((task) => task.id)}
             strategy={verticalListSortingStrategy}
           >
             <div>
-              {signalQueue.map((task) => {
+              {filteredQueue.map((task) => {
                 const isActive = activeTask?.id === task.id
                 const relatedTasks = getRelatedTasks(task)
                 const isTaskExecuting = isExecuting && executingTaskId === task.id
+                const project = task.categoryId ? getProject(task.categoryId) : undefined
 
                 return (
                   <SortableTaskRow
@@ -397,9 +434,12 @@ export const SignalQueue: React.FC = () => {
                     isExpanded={expandedTaskId === task.id}
                     relatedTasks={relatedTasks}
                     isExecuting={isTaskExecuting}
+                    projectColor={project?.color}
+                    projectName={project?.name}
                     onToggleComplete={() => handleToggleComplete(task.id, task.status)}
                     onStart={() => handleOpenExecutionModal(task)}
                     onExpand={() => handleExpandTask(task.id)}
+                    onDelete={() => deleteTask(task.id)}
                   />
                 )
               })}

@@ -272,12 +272,13 @@ function setupIPC(): void {
     }
   })
 
-  // Chat with MILO
+  // Chat with MILO - now with tool execution
   ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> }) => {
     try {
-      // Gather context
+      // Gather context - include task IDs for tool matching
       const goals = goalsRepository.getAll()
       const todayTasks = tasksRepository.getToday()
+      const allIncompleteTasks = tasksRepository.getAllIncomplete()
       const activeTask = tasksRepository.getActive()
       const dailyScore = scoresRepository.getToday()
 
@@ -285,12 +286,15 @@ function setupIPC(): void {
       const today = new Date().toISOString().split('T')[0]
       const activitySummary = activityRepository.getSummary(today)
 
-      return await claudeClient.chat({
+      // Use all incomplete tasks for better context matching
+      const tasksForContext = allIncompleteTasks.length > 0 ? allIncompleteTasks : todayTasks
+
+      const response = await claudeClient.chat({
         message: input.message,
         conversationHistory: input.conversationHistory,
         context: {
           goals,
-          todayTasks,
+          todayTasks: tasksForContext,
           activeTask: activeTask || undefined,
           dailyScore: dailyScore || undefined,
           activitySummary: {
@@ -300,6 +304,94 @@ function setupIPC(): void {
           },
         },
       })
+
+      // Execute any tool calls
+      const toolResults: string[] = []
+      if (response.toolCalls) {
+        for (const toolCall of response.toolCalls) {
+          try {
+            let result = ''
+            const input = toolCall.input
+
+            switch (toolCall.name) {
+              case 'complete_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.complete(taskId)
+                result = task ? `Completed: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'update_task_priority': {
+                const taskId = input.task_id as string
+                const priority = input.priority as number
+                const task = tasksRepository.update(taskId, { priority })
+                result = task ? `Updated priority for "${task.title}" to ${priority}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'update_task_status': {
+                const taskId = input.task_id as string
+                const status = input.status as string
+                const task = tasksRepository.update(taskId, { status: status as 'pending' | 'in_progress' | 'completed' | 'deferred' })
+                result = task ? `Updated status for "${task.title}" to ${status}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'create_task': {
+                const today = new Date().toISOString().split('T')[0]
+                const task = tasksRepository.create({
+                  title: input.title as string,
+                  description: (input.description as string) || undefined,
+                  priority: (input.priority as number) || 3,
+                  categoryId: (input.category_id as string) || undefined,
+                  status: 'pending',
+                  goalId: null,
+                  scheduledDate: today,
+                  estimatedDays: 1,
+                  rationale: undefined,
+                })
+                result = `Created task: ${task.title}`
+                break
+              }
+              case 'delete_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.getById(taskId)
+                const deleted = tasksRepository.delete(taskId)
+                result = deleted && task ? `Deleted: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'start_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.start(taskId)
+                result = task ? `Started: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'defer_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.defer(taskId)
+                result = task ? `Deferred: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              default:
+                result = `Unknown tool: ${toolCall.name}`
+            }
+
+            toolResults.push(result)
+            console.log(`[IPC] Tool executed: ${toolCall.name} → ${result}`)
+          } catch (toolError) {
+            console.error(`[IPC] Tool error (${toolCall.name}):`, toolError)
+            toolResults.push(`Error: ${toolCall.name} failed`)
+          }
+        }
+      }
+
+      // Combine message with tool results
+      let finalMessage = response.message
+      if (toolResults.length > 0) {
+        const toolSummary = toolResults.join('\n')
+        finalMessage = finalMessage
+          ? `${finalMessage}\n\n✓ Actions taken:\n${toolSummary}`
+          : `✓ Actions taken:\n${toolSummary}`
+      }
+
+      return finalMessage
     } catch (error) {
       console.error('[IPC] Chat error:', error)
       throw error
