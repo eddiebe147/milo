@@ -1,5 +1,4 @@
-import React from 'react'
-import { cn } from '@/lib/utils'
+import React, { useState, useEffect, useRef } from 'react'
 import { GlowText } from '@/components/ui/GlowText'
 import type { ChatMessage } from '@/stores'
 
@@ -8,26 +7,32 @@ interface ChatMessagesProps {
 }
 
 /**
- * ChatMessages - Scrollable message list component
+ * ChatMessages - Terminal-style message list with typewriter effect
  *
  * Features:
- * - User messages: right-aligned with green border
- * - MILO messages: left-aligned with label
- * - Empty state for no messages
- * - Smooth scrolling
- * - Timestamp display
- *
- * Usage:
- * <ChatMessages messages={dialogueMessages} />
+ * - Retro terminal aesthetic (no boxes/bubbles)
+ * - Typewriter animation for MILO responses
+ * - Command prompt style (> for user, MILO: for assistant)
+ * - Blinking cursor during typing
+ * - Monospace font throughout
  */
 export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+  }, [messages])
+
   // Empty state
   if (messages.length === 0) {
     return (
       <div className="h-full flex items-center justify-center p-6">
         <div className="text-center">
-          <GlowText intensity="low" className="text-sm">
-            No messages yet. Start a conversation with MILO.
+          <GlowText intensity="low" className="text-sm font-mono">
+            AWAITING INPUT...
           </GlowText>
         </div>
       </div>
@@ -35,62 +40,122 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4 custom-scrollbar">
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
+    <div
+      ref={containerRef}
+      className="h-full overflow-y-auto p-4 font-mono text-sm custom-scrollbar"
+    >
+      {messages.map((message, index) => (
+        <TerminalMessage
+          key={message.id}
+          message={message}
+          isLatest={index === messages.length - 1}
+        />
       ))}
     </div>
   )
 }
 
 /**
- * MessageBubble - Individual message component
+ * TerminalMessage - Individual message with typewriter effect
  */
-const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
+const TerminalMessage: React.FC<{
+  message: ChatMessage
+  isLatest: boolean
+}> = ({ message, isLatest }) => {
   const isUser = message.role === 'user'
-  const timestamp = new Date(message.timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const [displayedText, setDisplayedText] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const [hasTyped, setHasTyped] = useState(false)
+
+  // Typewriter effect for MILO messages
+  useEffect(() => {
+    // Only animate the latest MILO message that hasn't been typed yet
+    if (!isUser && isLatest && !hasTyped) {
+      setIsTyping(true)
+      setDisplayedText('')
+
+      const text = message.content
+      let currentIndex = 0
+
+      // Variable speed for more natural feel
+      const getDelay = () => {
+        const char = text[currentIndex]
+        if (char === '.' || char === '!' || char === '?') return 80
+        if (char === ',') return 40
+        if (char === '\n') return 60
+        return 15 + Math.random() * 15 // 15-30ms base
+      }
+
+      const typeNextChar = () => {
+        if (currentIndex < text.length) {
+          setDisplayedText(text.slice(0, currentIndex + 1))
+          currentIndex++
+          setTimeout(typeNextChar, getDelay())
+        } else {
+          setIsTyping(false)
+          setHasTyped(true)
+        }
+      }
+
+      // Small initial delay before starting
+      setTimeout(typeNextChar, 100)
+    } else if (!isUser && !isLatest) {
+      // Show full text for older messages
+      setDisplayedText(message.content)
+      setHasTyped(true)
+    } else if (isUser) {
+      setDisplayedText(message.content)
+    }
+  }, [message.content, isUser, isLatest, hasTyped])
+
+  // Reset hasTyped when message changes
+  useEffect(() => {
+    if (isLatest && !isUser) {
+      setHasTyped(false)
+    }
+  }, [message.id, isLatest, isUser])
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-1',
-        isUser ? 'items-end' : 'items-start'
+    <div className="mb-3">
+      {isUser ? (
+        // User input - command prompt style (GREEN)
+        <div className="flex">
+          <span className="text-pipboy-green-dim mr-2 select-none">&gt;</span>
+          <span className="text-pipboy-green">{displayedText}</span>
+        </div>
+      ) : (
+        // MILO response - labeled with typewriter (AMBER)
+        <div>
+          <span className="text-amber-500/70 text-xs mb-1 block">
+            [MILO]
+          </span>
+          <div className="pl-2 border-l border-amber-500/30">
+            <span className="text-amber-400 whitespace-pre-wrap">
+              {displayedText}
+            </span>
+            {/* Blinking cursor while typing */}
+            {isTyping && (
+              <span className="animate-blink text-amber-400">▌</span>
+            )}
+          </div>
+        </div>
       )}
-    >
-      {/* Message header with role and timestamp */}
-      <div className="flex items-center gap-2 px-1">
-        {!isUser && (
-          <span className="text-xs font-bold text-pipboy-green glow-low">
-            MILO
-          </span>
-        )}
-        <span className="text-xs text-pipboy-green-dim/70">
-          {timestamp}
-        </span>
-        {isUser && (
-          <span className="text-xs font-bold text-pipboy-green glow-low">
-            YOU
-          </span>
-        )}
-      </div>
-
-      {/* Message bubble */}
-      <div
-        className={cn(
-          'max-w-[80%] px-4 py-2.5 rounded-sm border',
-          'transition-all duration-200',
-          isUser
-            ? 'bg-pipboy-surface border-pipboy-green/50 shadow-glow-green/20'
-            : 'bg-pipboy-background border-pipboy-border'
-        )}
-      >
-        <p className="text-sm text-pipboy-green leading-relaxed whitespace-pre-wrap">
-          {message.content}
-        </p>
-      </div>
     </div>
   )
+}
+
+// Add blink animation to global styles or inline
+const style = document.createElement('style')
+style.textContent = `
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+  .animate-blink {
+    animation: blink 0.8s infinite;
+  }
+`
+if (!document.querySelector('style[data-milo-blink]')) {
+  style.setAttribute('data-milo-blink', 'true')
+  document.head.appendChild(style)
 }
