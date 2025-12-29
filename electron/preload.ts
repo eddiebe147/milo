@@ -173,6 +173,33 @@ export interface MiloAPI {
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
   }
+  chat: {
+    getAllConversations: () => Promise<ChatConversation[]>
+    getConversation: (id: string) => Promise<ChatConversation | null>
+    createConversation: (title?: string) => Promise<ChatConversation>
+    updateConversationTitle: (id: string, title: string) => Promise<boolean>
+    deleteConversation: (id: string) => Promise<boolean>
+    autoTitleConversation: (id: string) => Promise<ChatConversation | null>
+    getMessages: (conversationId: string) => Promise<ChatMessageDB[]>
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => Promise<ChatMessageDB>
+    deleteMessage: (id: string) => Promise<boolean>
+  }
+}
+
+// Chat types (from repository)
+interface ChatConversation {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface ChatMessageDB {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
 }
 
 // Expose the API to the renderer
@@ -331,5 +358,18 @@ contextBridge.exposeInMainWorld('milo', {
     getRefillMode: () => ipcRenderer.invoke('settings:getRefillMode'),
     saveRefillMode: (mode: 'endless' | 'daily_reset') => ipcRenderer.invoke('settings:saveRefillMode', mode),
     update: (updates: Record<string, unknown>) => ipcRenderer.invoke('settings:update', updates),
+  },
+
+  // Chat conversations & messages
+  chat: {
+    getAllConversations: () => ipcRenderer.invoke('chat:getAllConversations'),
+    getConversation: (id: string) => ipcRenderer.invoke('chat:getConversation', id),
+    createConversation: (title?: string) => ipcRenderer.invoke('chat:createConversation', title),
+    updateConversationTitle: (id: string, title: string) => ipcRenderer.invoke('chat:updateConversationTitle', id, title),
+    deleteConversation: (id: string) => ipcRenderer.invoke('chat:deleteConversation', id),
+    autoTitleConversation: (id: string) => ipcRenderer.invoke('chat:autoTitleConversation', id),
+    getMessages: (conversationId: string) => ipcRenderer.invoke('chat:getMessages', conversationId),
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => ipcRenderer.invoke('chat:addMessage', conversationId, role, content),
+    deleteMessage: (id: string) => ipcRenderer.invoke('chat:deleteMessage', id),
   },
 } satisfies MiloAPI)

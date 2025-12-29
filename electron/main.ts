@@ -2,7 +2,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
-import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository, settingsRepository } from './repositories'
+import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository, settingsRepository, chatRepository } from './repositories'
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
@@ -419,6 +419,35 @@ function setupIPC(): void {
 
   ipcMain.handle('taskExecution:hasClaudeCli', () => {
     return taskExecutor.hasClaudeCli()
+  })
+
+  // ==================== Chat Conversations & Messages ====================
+
+  // Conversations
+  ipcMain.handle('chat:getAllConversations', () => chatRepository.getAllConversations())
+  ipcMain.handle('chat:getConversation', (_, id: string) => chatRepository.getConversation(id))
+  ipcMain.handle('chat:createConversation', (_, title?: string) => chatRepository.createConversation(title))
+  ipcMain.handle('chat:updateConversationTitle', (_, id: string, title: string) => {
+    chatRepository.updateConversationTitle(id, title)
+    return true
+  })
+  ipcMain.handle('chat:deleteConversation', (_, id: string) => {
+    chatRepository.deleteConversation(id)
+    return true
+  })
+  ipcMain.handle('chat:autoTitleConversation', (_, id: string) => {
+    chatRepository.autoTitleConversation(id)
+    return chatRepository.getConversation(id)
+  })
+
+  // Messages
+  ipcMain.handle('chat:getMessages', (_, conversationId: string) => chatRepository.getMessages(conversationId))
+  ipcMain.handle('chat:addMessage', (_, conversationId: string, role: 'user' | 'assistant', content: string) => {
+    return chatRepository.addMessage(conversationId, role, content)
+  })
+  ipcMain.handle('chat:deleteMessage', (_, id: string) => {
+    chatRepository.deleteMessage(id)
+    return true
   })
 }
 

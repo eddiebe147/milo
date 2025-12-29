@@ -141,6 +141,22 @@ export interface ExecutionResult {
   error?: string
 }
 
+// Chat conversation types
+export interface ChatConversationDB {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChatMessageDB {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
 export interface MiloAPI {
   window: {
     minimize: () => Promise<void>
@@ -276,6 +292,17 @@ export interface MiloAPI {
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
+  }
+  chat: {
+    getAllConversations: () => Promise<ChatConversationDB[]>
+    getConversation: (id: string) => Promise<ChatConversationDB | null>
+    createConversation: (title?: string) => Promise<ChatConversationDB>
+    updateConversationTitle: (id: string, title: string) => Promise<boolean>
+    deleteConversation: (id: string) => Promise<boolean>
+    autoTitleConversation: (id: string) => Promise<ChatConversationDB | null>
+    getMessages: (conversationId: string) => Promise<ChatMessageDB[]>
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => Promise<ChatMessageDB>
+    deleteMessage: (id: string) => Promise<boolean>
   }
 }
 

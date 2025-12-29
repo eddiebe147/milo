@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ChevronUp, ChevronDown, Trash2, MessageSquare, Loader2, Settings } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, MessageSquare, Loader2, Settings, History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useChatStore } from '@/stores'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
+import { ChatHistory } from './ChatHistory'
 import { ApiKeySettings } from '../Settings/ApiKeySettings'
 
 /**
- * ChatBottomPanel - Bottom-docked collapsible chat panel
+ * ChatBottomPanel - Bottom-docked collapsible chat panel with history
  *
  * Features:
  * - Always visible at bottom of screen
  * - Collapsed state: Just input bar + expand button (~56px)
  * - Expanded state: Full chat history + input (~350px or 50vh)
+ * - Slide-out history panel
+ * - New chat button
  * - Smooth height animation between states
  * - Auto-expands when receiving AI response
  * - Click outside or chevron to collapse
@@ -20,7 +23,7 @@ import { ApiKeySettings } from '../Settings/ApiKeySettings'
  *
  * Layout:
  * - Collapsed: [💬 input...] [↑] [Send]
- * - Expanded: Header | Messages | Input
+ * - Expanded: Header | Messages | Input + History slide-out
  */
 export const ChatBottomPanel: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -32,8 +35,13 @@ export const ChatBottomPanel: React.FC = () => {
     messages,
     isGenerating,
     error,
+    isHistoryOpen,
+    conversations,
     sendMessage,
     clearConversation,
+    toggleHistory,
+    startNewConversation,
+    loadConversations,
   } = useChatStore()
 
   // Auto-scroll to bottom when new messages arrive
@@ -49,6 +57,11 @@ export const ChatBottomPanel: React.FC = () => {
       setIsExpanded(true)
     }
   }, [isGenerating])
+
+  // Load conversations on mount
+  useEffect(() => {
+    loadConversations()
+  }, [loadConversations])
 
   // Handle click outside to collapse
   useEffect(() => {
@@ -82,6 +95,10 @@ export const ChatBottomPanel: React.FC = () => {
     }
   }
 
+  const handleNewChat = () => {
+    startNewConversation()
+  }
+
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded)
   }
@@ -100,82 +117,122 @@ export const ChatBottomPanel: React.FC = () => {
     >
       {isExpanded ? (
         // EXPANDED STATE
-        <div className="h-full flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-pipboy-border bg-pipboy-surface/50">
-            <div className="flex items-center gap-2">
-              <MessageSquare size={14} className="text-pipboy-green" />
-              <span className="text-sm font-mono font-medium text-pipboy-green">
-                MILO CHAT
-              </span>
-              {isGenerating && (
-                <Loader2 size={12} className="animate-spin text-pipboy-green-dim" />
-              )}
-            </div>
+        <div className="h-full flex">
+          {/* History Panel (slide-out) */}
+          <div
+            className={`
+              transition-all duration-300 ease-out overflow-hidden
+              ${isHistoryOpen ? 'w-64' : 'w-0'}
+            `}
+          >
+            <ChatHistory />
+          </div>
 
-            <div className="flex items-center gap-1">
-              <Button
-                onClick={() => setIsSettingsOpen(true)}
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                title="API Key Settings"
-              >
-                <Settings size={14} />
-              </Button>
-              {messages.length > 0 && (
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-pipboy-border bg-pipboy-surface/50">
+              <div className="flex items-center gap-2">
+                {/* History Toggle */}
                 <Button
-                  onClick={handleClearConversation}
+                  onClick={toggleHistory}
+                  variant="ghost"
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${isHistoryOpen ? 'text-pipboy-green' : ''}`}
+                  title="Chat history"
+                >
+                  <History size={14} />
+                  {conversations.length > 0 && !isHistoryOpen && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-pipboy-green rounded-full" />
+                  )}
+                </Button>
+
+                {/* New Chat Button */}
+                <Button
+                  onClick={handleNewChat}
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0"
-                  title="Clear conversation"
+                  title="New chat"
                 >
-                  <Trash2 size={14} />
+                  <Plus size={14} />
                 </Button>
-              )}
-              <Button
-                onClick={toggleExpanded}
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                title="Collapse chat"
-              >
-                <ChevronDown size={16} />
-              </Button>
-            </div>
-          </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-hidden relative">
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-pipboy-green-dim">
-                <div className="text-center">
-                  <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No messages yet</p>
-                  <p className="text-xs opacity-70">Type below to chat with MILO</p>
-                </div>
+                <div className="w-px h-4 bg-pipboy-border mx-1" />
+
+                <MessageSquare size={14} className="text-pipboy-green" />
+                <span className="text-sm font-mono font-medium text-pipboy-green">
+                  MILO
+                </span>
+                {isGenerating && (
+                  <Loader2 size={12} className="animate-spin text-pipboy-green-dim" />
+                )}
               </div>
-            ) : (
-              <ChatMessages messages={messages} />
-            )}
-            <div ref={messagesEndRef} />
-          </div>
 
-          {/* Error display */}
-          {error && (
-            <div className="px-4 py-2 bg-red-900/20 border-t border-red-500/30">
-              <p className="text-xs text-red-400 font-mono">[ERROR] {error}</p>
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={() => setIsSettingsOpen(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  title="API Key Settings"
+                >
+                  <Settings size={14} />
+                </Button>
+                {messages.length > 0 && (
+                  <Button
+                    onClick={handleClearConversation}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="Clear conversation"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                )}
+                <Button
+                  onClick={toggleExpanded}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  title="Collapse chat"
+                >
+                  <ChevronDown size={16} />
+                </Button>
+              </div>
             </div>
-          )}
 
-          {/* Input Area */}
-          <div className="border-t border-pipboy-border bg-pipboy-surface/30">
-            <ChatInput
-              onSend={handleSendMessage}
-              disabled={isGenerating}
-              placeholder="Type message to MILO..."
-            />
+            {/* Messages Area */}
+            <div className="flex-1 overflow-hidden relative">
+              {messages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-pipboy-green-dim">
+                  <div className="text-center">
+                    <MessageSquare size={24} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No messages yet</p>
+                    <p className="text-xs opacity-70">Type below to chat with MILO</p>
+                  </div>
+                </div>
+              ) : (
+                <ChatMessages messages={messages} />
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Error display */}
+            {error && (
+              <div className="px-4 py-2 bg-red-900/20 border-t border-red-500/30">
+                <p className="text-xs text-red-400 font-mono">[ERROR] {error}</p>
+              </div>
+            )}
+
+            {/* Input Area */}
+            <div className="border-t border-pipboy-border bg-pipboy-surface/30">
+              <ChatInput
+                onSend={handleSendMessage}
+                disabled={isGenerating}
+                placeholder="Type message to MILO..."
+              />
+            </div>
           </div>
         </div>
       ) : (
