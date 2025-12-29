@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
 import { ProjectTabs } from './ProjectTabs'
 import { SignalQueue } from './SignalQueue'
 import { ProjectsList } from './ProjectsList'
@@ -86,24 +85,6 @@ export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMen
 
       {/* CHAT: Bottom-docked collapsible chat panel */}
       <ChatBottomPanel />
-
-      {/* FAB: Floating action button for adding tasks */}
-      <button
-        onClick={() => setIsTaskModalOpen(true)}
-        className="
-          fixed bottom-24 right-4 z-40
-          w-12 h-12 rounded-full
-          bg-pipboy-green text-pipboy-background
-          shadow-lg shadow-pipboy-green/30
-          hover:bg-pipboy-green/90 hover:scale-105
-          active:scale-95
-          transition-all duration-200
-          flex items-center justify-center
-        "
-        title="Add new task"
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
 
       {/* Modals */}
       <AddTaskModal
