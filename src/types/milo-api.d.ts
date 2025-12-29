@@ -142,6 +142,15 @@ export interface ExecutionResult {
   error?: string
 }
 
+// Theme colors type (backend format)
+export interface BackendThemeColors {
+  themePrimaryColor: string
+  themeAccentColor: string
+  themeDangerColor: string
+  themeUserMessageColor: string
+  themeAiMessageColor: string
+}
+
 // Chat conversation types
 export interface ChatConversationDB {
   id: string
@@ -295,6 +304,9 @@ export interface MiloAPI {
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
+    getThemeColors: () => Promise<BackendThemeColors>
+    setThemeColor: (key: keyof BackendThemeColors, value: string) => Promise<boolean>
+    setThemeColors: (colors: Partial<BackendThemeColors>) => Promise<boolean>
   }
   chat: {
     getAllConversations: () => Promise<ChatConversationDB[]>

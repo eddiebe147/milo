@@ -174,6 +174,9 @@ export interface MiloAPI {
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
+    getThemeColors: () => Promise<ThemeColors>
+    setThemeColor: (key: keyof ThemeColors, value: string) => Promise<boolean>
+    setThemeColors: (colors: Partial<ThemeColors>) => Promise<boolean>
   }
   chat: {
     getAllConversations: () => Promise<ChatConversation[]>
@@ -202,6 +205,15 @@ interface ChatMessageDB {
   role: 'user' | 'assistant'
   content: string
   createdAt: string
+}
+
+// Theme colors type (from settings repository)
+interface ThemeColors {
+  themePrimaryColor: string
+  themeAccentColor: string
+  themeDangerColor: string
+  themeUserMessageColor: string
+  themeAiMessageColor: string
 }
 
 // Expose the API to the renderer
@@ -363,6 +375,9 @@ contextBridge.exposeInMainWorld('milo', {
     getRefillMode: () => ipcRenderer.invoke('settings:getRefillMode'),
     saveRefillMode: (mode: 'endless' | 'daily_reset') => ipcRenderer.invoke('settings:saveRefillMode', mode),
     update: (updates: Record<string, unknown>) => ipcRenderer.invoke('settings:update', updates),
+    getThemeColors: () => ipcRenderer.invoke('settings:getThemeColors'),
+    setThemeColor: (key: keyof ThemeColors, value: string) => ipcRenderer.invoke('settings:setThemeColor', key, value),
+    setThemeColors: (colors: Partial<ThemeColors>) => ipcRenderer.invoke('settings:setThemeColors', colors),
   },
 
   // Chat conversations & messages

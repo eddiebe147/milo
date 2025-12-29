@@ -104,6 +104,15 @@ export interface DialogueMessage {
   timestamp: string
 }
 
+// Theme colors
+export interface ThemeColors {
+  primaryColor: string
+  accentColor: string
+  dangerColor: string
+  userMessageColor: string
+  aiMessageColor: string
+}
+
 // User settings
 export interface UserSettings {
   // Work hours

@@ -315,7 +315,35 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v3 complete')
   }
 
-  // Future migrations go here (if version < 4, etc.)
+  if (version < 4) {
+    console.log('[Database] Running migration v4: Add theme color columns to user_settings')
+
+    // Add theme color columns to user_settings table
+    const themeColumns = [
+      "theme_primary_color TEXT DEFAULT '#00ff41'",
+      "theme_accent_color TEXT DEFAULT '#ffb000'",
+      "theme_danger_color TEXT DEFAULT '#ff3333'",
+      "theme_user_message_color TEXT DEFAULT '#00ff41'",
+      "theme_ai_message_color TEXT DEFAULT '#ffb000'",
+    ]
+
+    for (const column of themeColumns) {
+      try {
+        database.prepare(`ALTER TABLE user_settings ADD COLUMN ${column}`).run()
+      } catch (e) {
+        // Column might already exist, ignore error
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        if (!errorMessage.includes('duplicate column')) {
+          console.warn(`[Database] Migration warning: ${errorMessage}`)
+        }
+      }
+    }
+
+    database.pragma('user_version = 4')
+    console.log('[Database] Migration v4 complete')
+  }
+
+  // Future migrations go here (if version < 5, etc.)
 }
 
 // Default app classifications for common productivity apps

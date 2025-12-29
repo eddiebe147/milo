@@ -118,24 +118,45 @@ const TerminalMessage: React.FC<{
   return (
     <div className="mb-3">
       {isUser ? (
-        // User input - command prompt style (GREEN)
+        // User input - command prompt style (uses --chat-user-color)
         <div className="flex">
-          <span className="text-pipboy-green-dim mr-2 select-none">&gt;</span>
-          <span className="text-pipboy-green">{displayedText}</span>
+          <span
+            className="mr-2 select-none opacity-70"
+            style={{ color: 'var(--chat-user-color)' }}
+          >
+            &gt;
+          </span>
+          <span style={{ color: 'var(--chat-user-color)' }}>
+            {displayedText}
+          </span>
         </div>
       ) : (
-        // MILO response - labeled with typewriter (AMBER)
+        // MILO response - labeled with typewriter (uses --chat-ai-color)
         <div>
-          <span className="text-amber-500/70 text-xs mb-1 block">
+          <span
+            className="text-xs mb-1 block opacity-70"
+            style={{ color: 'var(--chat-ai-color)' }}
+          >
             [MILO]
           </span>
-          <div className="pl-2 border-l border-amber-500/30">
-            <span className="text-amber-400 whitespace-pre-wrap">
+          <div
+            className="pl-2 border-l"
+            style={{ borderColor: 'color-mix(in srgb, var(--chat-ai-color) 30%, transparent)' }}
+          >
+            <span
+              className="whitespace-pre-wrap"
+              style={{ color: 'var(--chat-ai-color)' }}
+            >
               {displayedText}
             </span>
             {/* Blinking cursor while typing */}
             {isTyping && (
-              <span className="animate-blink text-amber-400">▌</span>
+              <span
+                className="animate-blink"
+                style={{ color: 'var(--chat-ai-color)' }}
+              >
+                ▌
+              </span>
             )}
           </div>
         </div>

@@ -6,6 +6,7 @@ import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
 import { useNudgeStore, useAIStore } from '@/stores'
+import { useThemeColors } from '@/hooks/useThemeColors'
 
 type View = 'dashboard' | 'settings' | 'onboarding' | 'plan-import'
 
@@ -16,6 +17,9 @@ function App() {
 
   const { activeNudges, dismissNudge, snoozeApp, setupEventListener } = useNudgeStore()
   const { startMorningBriefing, startEveningReview } = useAIStore()
+
+  // Inject theme colors as CSS variables
+  useThemeColors()
 
   // Set up nudge event listener
   useEffect(() => {

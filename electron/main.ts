@@ -378,6 +378,15 @@ function setupIPC(): void {
     settingsRepository.update(updates)
     return true
   })
+  ipcMain.handle('settings:getThemeColors', () => settingsRepository.getThemeColors())
+  ipcMain.handle('settings:setThemeColor', (_, key: string, value: string) => {
+    settingsRepository.setThemeColor(key as any, value)
+    return true
+  })
+  ipcMain.handle('settings:setThemeColors', (_, colors) => {
+    settingsRepository.setThemeColors(colors)
+    return true
+  })
 
   // Task execution (smart task automation)
   ipcMain.handle('taskExecution:classifyTask', async (_, taskId: string) => {
