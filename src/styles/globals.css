@@ -237,3 +237,23 @@ textarea:focus {
     box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
   }
 }
+
+/* Task completion animation - green glow burst */
+@keyframes task-complete {
+  0% {
+    box-shadow: 0 0 0 0 var(--pipboy-green);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 20px 10px var(--pipboy-green);
+    opacity: 0.8;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 1;
+  }
+}
+
+.task-complete-animation {
+  animation: task-complete 0.5s ease-out;
+}

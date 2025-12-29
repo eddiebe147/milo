@@ -7,6 +7,7 @@ import { AddTaskModal } from './AddTaskModal'
 import { AddProjectModal } from './AddProjectModal'
 import { ChatBottomPanel } from '../Chat/ChatBottomPanel'
 import { useTasksStore, useProjectsStore } from '@/stores'
+// import { useModal } from '@/contexts/ModalContext' // Available for future use
 
 interface DashboardV3Props {
   onOpenMenu?: () => void
@@ -33,6 +34,7 @@ interface DashboardV3Props {
 export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMenu }) => {
   const { fetchSignalQueue, fetchAllTasks } = useTasksStore()
   const { fetchProjects, activeFilter } = useProjectsStore()
+  // const modalContext = useModal() // Available for future use
 
   // Modal states
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
@@ -48,7 +50,8 @@ export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMen
     ])
   }, [fetchSignalQueue, fetchAllTasks, fetchProjects])
 
-  // Listen for modal open events from child components
+  // Listen for modal open events from child components (legacy support)
+  // TODO: Remove these events once all child components use modal context directly
   useEffect(() => {
     const handleOpenTaskModal = () => setIsTaskModalOpen(true)
     const handleOpenProjectModal = () => setIsProjectModalOpen(true)
@@ -100,9 +103,13 @@ export const DashboardV3: React.FC<DashboardV3Props> = ({ onOpenMenu: _onOpenMen
   )
 }
 
-// Export modal opener for use by child components
+/**
+ * useDashboardModals - Hook for opening dashboard modals
+ *
+ * @deprecated Use useModal() from ModalContext instead
+ * This is kept for backwards compatibility but should be migrated away from
+ */
 export const useDashboardModals = () => {
-  // This would be better as context, but for now we use a simple approach
   return {
     openTaskModal: () => document.dispatchEvent(new CustomEvent('milo:openTaskModal')),
     openProjectModal: () => document.dispatchEvent(new CustomEvent('milo:openProjectModal')),

@@ -72,6 +72,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     const isCompleted = task.status === 'completed'
     const isInProgress = task.status === 'in_progress' || isActive
     const [isHovering, setIsHovering] = useState(false)
+    const [justCompleted, setJustCompleted] = useState(false)
 
     // Priority color mapping
     const getPriorityBadge = (priority: number) => {
@@ -82,6 +83,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 
     const priorityBadge = getPriorityBadge(task.priority)
 
+    // Handle task completion with animation
+    const handleToggleComplete = () => {
+        if (!isCompleted) {
+            setJustCompleted(true)
+            // Reset animation state after animation completes
+            setTimeout(() => setJustCompleted(false), 500)
+        }
+        onToggleComplete()
+    }
+
     return (
         <div
             className={cn(
@@ -89,7 +100,8 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                 isInProgress && !isCompleted
                     ? 'border-l-pipboy-green bg-pipboy-green/5'
                     : 'border-l-transparent',
-                isCompleted && 'opacity-60'
+                isCompleted && 'opacity-60',
+                justCompleted && 'task-complete-animation'
             )}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
@@ -98,7 +110,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             <div className="p-3 flex items-center gap-3">
                 {/* Completion circle */}
                 <button
-                    onClick={onToggleComplete}
+                    onClick={handleToggleComplete}
                     disabled={isCompleted}
                     className={cn(
                         'flex-shrink-0 transition-all duration-300',
