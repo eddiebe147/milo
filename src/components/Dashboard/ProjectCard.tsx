@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Play } from 'lucide-react'
+import { ChevronDown, ChevronRight, Play, Plus } from 'lucide-react'
 import { useTasksStore } from '@/stores'
 import type { Project } from '@/stores'
 import type { Task } from '@/types'
@@ -9,6 +9,7 @@ interface ProjectCardProps {
   tasks: Task[]
   isExpanded?: boolean
   onToggleExpand?: () => void
+  onAddTask?: (projectId: string) => void
 }
 
 /**
@@ -34,6 +35,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   tasks,
   isExpanded = false,
   onToggleExpand,
+  onAddTask,
 }) => {
   const { startTask } = useTasksStore()
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null)
@@ -98,10 +100,31 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           {project.name}
         </span>
 
-        {/* Progress Badge */}
-        <span className="flex-shrink-0 px-2 py-0.5 rounded-sm bg-pipboy-surface text-[10px] font-mono text-pipboy-green-dim">
-          {stats.incomplete.length} task{stats.incomplete.length !== 1 ? 's' : ''}
-        </span>
+        {/* Progress Badge + Add Button */}
+        <div className="flex-shrink-0 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-sm bg-pipboy-surface text-[10px] font-mono text-pipboy-green-dim">
+            {stats.incomplete.length} task{stats.incomplete.length !== 1 ? 's' : ''}
+          </span>
+
+          {/* Add Task Button */}
+          {onAddTask && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddTask(project.id)
+              }}
+              className="
+                p-1 rounded-sm
+                text-pipboy-green-dim hover:text-pipboy-green
+                hover:bg-pipboy-green/10 transition-colors
+              "
+              title={`Add task to ${project.name}`}
+              aria-label={`Add task to ${project.name}`}
+            >
+              <Plus size={14} />
+            </button>
+          )}
+        </div>
       </button>
 
       {/* Collapsible Task List */}

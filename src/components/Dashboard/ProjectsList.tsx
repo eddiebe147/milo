@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { Folder } from 'lucide-react'
 import { useProjectsStore, useTasksStore } from '@/stores'
 import { ProjectCard } from './ProjectCard'
+import { AddTaskModal } from './AddTaskModal'
 
 /**
  * ProjectsList - Collapsible list of project cards with their tasks
@@ -34,6 +35,10 @@ export const ProjectsList: React.FC = () => {
 
   // Track which project is expanded (null = none, or project id)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // Track AddTaskModal state
+  const [addTaskModalOpen, setAddTaskModalOpen] = useState(false)
+  const [addTaskProjectId, setAddTaskProjectId] = useState<string | null>(null)
 
   // Filter projects based on activeFilter
   const visibleProjects = useMemo(() => {
@@ -73,6 +78,18 @@ export const ProjectsList: React.FC = () => {
   // Handle project expand toggle
   const handleToggleExpand = (projectId: string) => {
     setExpandedId(current => current === projectId ? null : projectId)
+  }
+
+  // Handle opening AddTaskModal for a specific project
+  const handleAddTask = (projectId: string) => {
+    setAddTaskProjectId(projectId)
+    setAddTaskModalOpen(true)
+  }
+
+  // Handle closing AddTaskModal
+  const handleCloseAddTask = () => {
+    setAddTaskModalOpen(false)
+    setAddTaskProjectId(null)
   }
 
   // Auto-expand single project when filtered
@@ -129,9 +146,17 @@ export const ProjectsList: React.FC = () => {
             tasks={tasksByProject[project.id] || []}
             isExpanded={expandedId === project.id}
             onToggleExpand={() => handleToggleExpand(project.id)}
+            onAddTask={handleAddTask}
           />
         ))}
       </div>
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={addTaskModalOpen}
+        onClose={handleCloseAddTask}
+        defaultProjectId={addTaskProjectId}
+      />
     </div>
   )
 }
