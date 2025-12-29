@@ -82,6 +82,7 @@ export interface MiloAPI {
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
     recordWork: (id: string) => Promise<Task | null>
+    reorderSignalQueue: (taskIds: string[]) => Promise<void>
   }
   categories: {
     getAll: () => Promise<Category[]>
@@ -279,6 +280,7 @@ contextBridge.exposeInMainWorld('milo', {
     getBacklog: (signalQueueIds: string[]) => ipcRenderer.invoke('tasks:getBacklog', signalQueueIds),
     getWorkedYesterday: () => ipcRenderer.invoke('tasks:getWorkedYesterday'),
     recordWork: (id: string) => ipcRenderer.invoke('tasks:recordWork', id),
+    reorderSignalQueue: (taskIds: string[]) => ipcRenderer.invoke('tasks:reorderSignalQueue', taskIds),
   },
 
   // Categories CRUD

@@ -210,6 +210,7 @@ export interface MiloAPI {
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
     recordWork: (id: string) => Promise<Task | null>
+    reorderSignalQueue: (taskIds: string[]) => Promise<void>
   }
   categories: {
     getAll: () => Promise<Category[]>

@@ -4,6 +4,80 @@ import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
 import { TaskExecutionModal, type ExecutionTarget } from './TaskExecutionModal'
 import type { Task } from '@/types'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+
+/**
+ * SortableTaskRow Component
+ *
+ * Wraps TaskRow with drag-and-drop functionality using @dnd-kit/sortable
+ */
+interface SortableTaskRowProps {
+  task: Task
+  isActive: boolean
+  isExpanded: boolean
+  relatedTasks: Task[]
+  isExecuting: boolean
+  onToggleComplete: () => void
+  onStart: () => void
+  onExpand: () => void
+}
+
+const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.task.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-pipboy-border/50 last:border-b-0 ${
+        isDragging ? 'opacity-50' : ''
+      }`}
+    >
+      {/* Invisible drag handle overlay on left side */}
+      <div className="relative">
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute left-0 top-0 bottom-0 w-8 cursor-grab active:cursor-grabbing z-20 hover:bg-pipboy-green/5 focus:bg-pipboy-green/10 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-pipboy-green/50"
+          aria-label="Drag to reorder task. Use arrow keys when focused to move."
+          role="button"
+          tabIndex={0}
+        />
+        <TaskRow {...props} />
+      </div>
+    </div>
+  )
+}
 
 /**
  * SignalQueue Component
@@ -11,6 +85,7 @@ import type { Task } from '@/types'
  * Displays top 3-5 priority tasks from the signal queue with terminal aesthetic.
  * Features:
  * - Adjustable queue size (3-5 tasks)
+ * - Drag-and-drop reordering (grab left edge of task)
  * - Expandable task rows with details
  * - Smart task execution (Claude Code, Web, Research)
  * - Priority-based ordering
@@ -35,6 +110,7 @@ export const SignalQueue: React.FC = () => {
     getRelatedTasks,
     isExecuting,
     executingTaskId,
+    reorderSignalQueue,
   } = useTasksStore()
 
   // Projects store for category badges (future use)
@@ -143,6 +219,38 @@ export const SignalQueue: React.FC = () => {
   // Handler: Adjust queue size
   const handleSizeChange = (size: number) => {
     setSignalQueueSize(size)
+  }
+
+  // Setup drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts (prevents accidental drags)
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handler: Drag end - reorder tasks
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const oldIndex = signalQueue.findIndex((task) => task.id === active.id)
+    const newIndex = signalQueue.findIndex((task) => task.id === over.id)
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(signalQueue, oldIndex, newIndex)
+      const taskIds = newOrder.map((task) => task.id)
+
+      // Optimistically update UI, then persist to database
+      await reorderSignalQueue(taskIds)
+    }
   }
 
   // Loading state
@@ -256,7 +364,7 @@ export const SignalQueue: React.FC = () => {
         </div>
       </div>
 
-      {/* Task queue */}
+      {/* Task queue with drag-and-drop */}
       {signalQueue.length === 0 ? (
         <div className="p-6 text-center text-pipboy-green-dim">
           <p className="text-xs">No tasks in queue.</p>
@@ -265,27 +373,39 @@ export const SignalQueue: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-pipboy-border/50">
-          {signalQueue.map((task) => {
-            const isActive = activeTask?.id === task.id
-            const relatedTasks = getRelatedTasks(task)
-            const isTaskExecuting = isExecuting && executingTaskId === task.id
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
+        >
+          <SortableContext
+            items={signalQueue.map((task) => task.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div>
+              {signalQueue.map((task) => {
+                const isActive = activeTask?.id === task.id
+                const relatedTasks = getRelatedTasks(task)
+                const isTaskExecuting = isExecuting && executingTaskId === task.id
 
-            return (
-              <TaskRow
-                key={task.id}
-                task={task}
-                isActive={isActive}
-                isExpanded={expandedTaskId === task.id}
-                relatedTasks={relatedTasks}
-                isExecuting={isTaskExecuting}
-                onToggleComplete={() => handleToggleComplete(task.id, task.status)}
-                onStart={() => handleOpenExecutionModal(task)}
-                onExpand={() => handleExpandTask(task.id)}
-              />
-            )
-          })}
-        </div>
+                return (
+                  <SortableTaskRow
+                    key={task.id}
+                    task={task}
+                    isActive={isActive}
+                    isExpanded={expandedTaskId === task.id}
+                    relatedTasks={relatedTasks}
+                    isExecuting={isTaskExecuting}
+                    onToggleComplete={() => handleToggleComplete(task.id, task.status)}
+                    onStart={() => handleOpenExecutionModal(task)}
+                    onExpand={() => handleExpandTask(task.id)}
+                  />
+                )
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Execution Modal */}

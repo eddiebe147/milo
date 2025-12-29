@@ -181,6 +181,7 @@ function setupIPC(): void {
   ipcMain.handle('tasks:getBacklog', (_, signalQueueIds: string[]) => tasksRepository.getBacklog(signalQueueIds))
   ipcMain.handle('tasks:getWorkedYesterday', () => tasksRepository.getWorkedYesterday())
   ipcMain.handle('tasks:recordWork', (_, id: string) => tasksRepository.recordWork(id))
+  ipcMain.handle('tasks:reorderSignalQueue', (_, taskIds: string[]) => tasksRepository.reorderSignalQueue(taskIds))
 
   // Categories CRUD
   ipcMain.handle('categories:getAll', () => categoriesRepository.getAll())
