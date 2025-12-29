@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Radio, Loader2, AlertCircle } from 'lucide-react'
-import { useTasksStore, useCategoriesStore } from '@/stores'
+import { Radio, Loader2, AlertCircle, RefreshCw, Pause } from 'lucide-react'
+import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
 
 /**
@@ -36,7 +36,13 @@ export const SignalQueue: React.FC = () => {
     executingTaskId,
   } = useTasksStore()
 
-  const { categories } = useCategoriesStore()
+  // Projects store for category badges (future use)
+  const _projectsStore = useProjectsStore()
+  void _projectsStore // Suppress unused warning - will use for project display
+
+  // Settings store for refill mode
+  const { settings, toggleRefillMode } = useSettingsStore()
+  const refillMode = settings.refillMode
 
   // Track which task is expanded
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
@@ -126,26 +132,58 @@ export const SignalQueue: React.FC = () => {
           </span>
         </div>
 
-        {/* Size slider */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-pipboy-green-dim">SIZE:</span>
-          <div className="flex gap-1">
-            {[3, 4, 5].map(size => (
-              <button
-                key={size}
-                onClick={() => handleSizeChange(size)}
-                className={`
-                  text-[10px] px-2 py-0.5 rounded-sm transition-all
-                  ${signalQueueSize === size
-                    ? 'bg-pipboy-green/20 text-pipboy-green border border-pipboy-green/50'
-                    : 'bg-pipboy-surface text-pipboy-green-dim border border-pipboy-border hover:border-pipboy-green/30'
-                  }
-                `}
-              >
-                {size}
-              </button>
-            ))}
+        {/* Controls row: Size slider + Refill mode */}
+        <div className="flex items-center justify-between">
+          {/* Size slider */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-pipboy-green-dim">SIZE:</span>
+            <div className="flex gap-1">
+              {[3, 4, 5].map(size => (
+                <button
+                  key={size}
+                  onClick={() => handleSizeChange(size)}
+                  className={`
+                    text-[10px] px-2 py-0.5 rounded-sm transition-all
+                    ${signalQueueSize === size
+                      ? 'bg-pipboy-green/20 text-pipboy-green border border-pipboy-green/50'
+                      : 'bg-pipboy-surface text-pipboy-green-dim border border-pipboy-border hover:border-pipboy-green/30'
+                    }
+                  `}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Refill mode toggle */}
+          <button
+            onClick={toggleRefillMode}
+            className={`
+              flex items-center gap-1.5 px-2 py-0.5 rounded-sm
+              text-[10px] transition-all border
+              ${refillMode === 'endless'
+                ? 'bg-pipboy-green/10 text-pipboy-green border-pipboy-green/50'
+                : 'bg-pipboy-surface text-pipboy-green-dim border-pipboy-border hover:border-pipboy-green/30'
+              }
+            `}
+            title={refillMode === 'endless'
+              ? 'Endless: Auto-refills when tasks complete'
+              : 'Daily: Queue empties as you complete tasks'
+            }
+          >
+            {refillMode === 'endless' ? (
+              <>
+                <RefreshCw size={10} className="animate-spin-slow" />
+                <span>ENDLESS</span>
+              </>
+            ) : (
+              <>
+                <Pause size={10} />
+                <span>DAILY</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

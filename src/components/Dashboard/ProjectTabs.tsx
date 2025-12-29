@@ -1,42 +1,44 @@
 import React, { useEffect, useMemo } from 'react'
-import { useCategoriesStore, useTasksStore } from '@/stores'
+import { Plus } from 'lucide-react'
+import { useProjectsStore, useTasksStore } from '@/stores'
 
 /**
- * CategoryTabs - Horizontal scrollable filter tabs for task categories
+ * ProjectTabs - Horizontal scrollable filter tabs for task projects
  *
  * Features:
- * - "All" tab + one tab per active category
+ * - "All" tab + one tab per active project
  * - Active tab highlighted with pipboy-green border/background
  * - Click active tab again to clear filter (toggle behavior)
- * - Category color indicator dot on each tab
- * - Task count badge for each category
+ * - Project color indicator dot on each tab
+ * - Task count badge for each project
  * - Horizontal scroll with hidden scrollbar (mobile-friendly)
+ * - Add project button (future)
  *
  * Usage:
- * <CategoryTabs />
+ * <ProjectTabs />
  *
  * State management:
- * - Reads categories from useCategoriesStore
- * - Sets activeFilter via setActiveFilter(categoryId | null)
- * - Counts tasks per category from useTasksStore
+ * - Reads projects from useProjectsStore
+ * - Sets activeFilter via setActiveFilter(projectId | null)
+ * - Counts tasks per project from useTasksStore
  */
-export const CategoryTabs: React.FC = () => {
+export const ProjectTabs: React.FC = () => {
   const {
-    categories,
+    projects,
     activeFilter,
     setActiveFilter,
-    fetchCategories,
+    fetchProjects,
     isLoading,
-  } = useCategoriesStore()
+  } = useProjectsStore()
 
   const { allTasks } = useTasksStore()
 
-  // Fetch categories on mount
+  // Fetch projects on mount
   useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
+    fetchProjects()
+  }, [fetchProjects])
 
-  // Calculate task counts per category
+  // Calculate task counts per project
   const taskCounts = useMemo(() => {
     const counts: Record<string, number> = {}
 
@@ -56,21 +58,21 @@ export const CategoryTabs: React.FC = () => {
   const totalTaskCount = allTasks.filter(t => t.status !== 'completed').length
 
   // Handle tab click - toggle behavior if clicking active tab
-  const handleTabClick = (categoryId: string | null) => {
-    if (activeFilter === categoryId) {
+  const handleTabClick = (projectId: string | null) => {
+    if (activeFilter === projectId) {
       // Clicking active tab clears the filter
       setActiveFilter(null)
     } else {
-      setActiveFilter(categoryId)
+      setActiveFilter(projectId)
     }
   }
 
   // Show loading state briefly
-  if (isLoading && categories.length === 0) {
+  if (isLoading && projects.length === 0) {
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 text-pipboy-green-dim">
         <div className="w-2 h-2 rounded-full bg-pipboy-green-dim animate-pulse" />
-        <span className="text-xs font-mono">Loading categories...</span>
+        <span className="text-xs font-mono">Loading projects...</span>
       </div>
     )
   }
@@ -121,15 +123,15 @@ export const CategoryTabs: React.FC = () => {
           )}
         </button>
 
-        {/* Category tabs */}
-        {categories.map(category => {
-          const count = taskCounts[category.id] || 0
-          const isActive = activeFilter === category.id
+        {/* Project tabs */}
+        {projects.map(project => {
+          const count = taskCounts[project.id] || 0
+          const isActive = activeFilter === project.id
 
           return (
             <button
-              key={category.id}
-              onClick={() => handleTabClick(category.id)}
+              key={project.id}
+              onClick={() => handleTabClick(project.id)}
               className={`
                 flex items-center gap-2 px-3 py-1.5 rounded-sm
                 font-mono text-xs whitespace-nowrap
@@ -140,16 +142,16 @@ export const CategoryTabs: React.FC = () => {
                   : 'bg-pipboy-surface/50 border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/50 hover:text-pipboy-green'
                 }
               `}
-              title={`${category.name}${count > 0 ? ` (${count} tasks)` : ''}`}
+              title={`${project.name}${count > 0 ? ` (${count} tasks)` : ''}`}
             >
-              {/* Category color indicator */}
+              {/* Project color indicator */}
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: category.color }}
+                style={{ backgroundColor: project.color }}
               />
 
-              {/* Category name */}
-              <span className="tracking-wide">{category.name}</span>
+              {/* Project name */}
+              <span className="tracking-wide">{project.name}</span>
 
               {/* Task count badge */}
               {count > 0 && (
@@ -166,10 +168,27 @@ export const CategoryTabs: React.FC = () => {
             </button>
           )
         })}
+
+        {/* Add project button */}
+        <button
+          onClick={() => {
+            document.dispatchEvent(new CustomEvent('milo:openProjectModal'))
+          }}
+          className={`
+            flex items-center justify-center w-8 h-8 rounded-sm
+            border border-dashed border-pipboy-border
+            text-pipboy-green-dim hover:text-pipboy-green
+            hover:border-pipboy-green/50 hover:bg-pipboy-surface/50
+            transition-all duration-200 flex-shrink-0
+          `}
+          title="Add new project"
+        >
+          <Plus size={14} />
+        </button>
       </div>
 
       {/* Subtle fade effect on right edge to indicate scrollability */}
-      {categories.length > 0 && (
+      {projects.length > 0 && (
         <div
           className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
           style={{

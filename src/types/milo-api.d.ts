@@ -254,6 +254,29 @@ export interface MiloAPI {
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
   }
+  settings: {
+    get: () => Promise<{
+      apiKey: string | null
+      refillMode: 'endless' | 'daily_reset'
+      workStartTime: string
+      workEndTime: string
+      workDays: number[]
+      monitoringEnabled: boolean
+      pollingIntervalMs: number
+      driftAlertEnabled: boolean
+      driftAlertDelayMinutes: number
+      morningBriefingTime: string
+      eveningReviewTime: string
+      alwaysOnTop: boolean
+      startMinimized: boolean
+      showInDock: boolean
+    }>
+    getApiKey: () => Promise<string | null>
+    saveApiKey: (apiKey: string | null) => Promise<boolean>
+    getRefillMode: () => Promise<'endless' | 'daily_reset'>
+    saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
+    update: (updates: Record<string, unknown>) => Promise<boolean>
+  }
 }
 
 declare global {

@@ -18,6 +18,9 @@ const DEFAULT_SETTINGS: UserSettings = {
   alwaysOnTop: false,
   startMinimized: false,
   showInDock: true,
+
+  // Default to endless mode - auto-refill signal queue as tasks complete
+  refillMode: 'endless',
 }
 
 interface SettingsState {
@@ -32,6 +35,7 @@ interface SettingsState {
   loadClassifications: () => Promise<void>
   updateClassification: (classification: Omit<AppClassification, 'id' | 'createdAt'>) => Promise<void>
   toggleAlwaysOnTop: () => Promise<boolean>
+  toggleRefillMode: () => void
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -109,5 +113,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ error: (error as Error).message })
       return get().settings.alwaysOnTop
     }
+  },
+
+  toggleRefillMode: () => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        refillMode: state.settings.refillMode === 'endless' ? 'daily_reset' : 'endless',
+      },
+    }))
+    // TODO: Persist to database via IPC when settings persistence is implemented
   },
 }))

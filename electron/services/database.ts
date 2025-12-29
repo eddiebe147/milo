@@ -248,7 +248,34 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v1 complete')
   }
 
-  // Future migrations go here (if version < 2, if version < 3, etc.)
+  if (version < 2) {
+    console.log('[Database] Running migration v2: Add API key and refill mode to settings')
+
+    // Add api_key column for Claude API key (encrypted storage recommended for production)
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN api_key TEXT`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Add refill_mode column for signal queue behavior
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN refill_mode TEXT DEFAULT 'endless'`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    database.pragma('user_version = 2')
+    console.log('[Database] Migration v2 complete')
+  }
+
+  // Future migrations go here (if version < 3, etc.)
 }
 
 // Default app classifications for common productivity apps
