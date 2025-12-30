@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useTasksStore } from './tasksStore'
 
 export interface ChatMessage {
   id: string
@@ -228,6 +229,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
             messages: [...state.messages, assistantMessage],
             isGenerating: false,
           }))
+        }
+
+        // Refresh task store if response indicates task operations were performed
+        // The backend adds "✓ Actions taken:" when tools are executed
+        if (response.includes('✓ Actions taken:')) {
+          // Refresh all task data to reflect changes made via chat
+          const tasksStore = useTasksStore.getState()
+          await Promise.all([
+            tasksStore.fetchAllTasks(),
+            tasksStore.fetchSignalQueue(),
+          ])
         }
 
         // Auto-title after first exchange (2 messages)

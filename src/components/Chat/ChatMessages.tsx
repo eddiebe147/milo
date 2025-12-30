@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { GlowText } from '@/components/ui/GlowText'
 import type { ChatMessage } from '@/stores'
 
 interface ChatMessagesProps {
   messages: ChatMessage[]
+  /** Called during typing animation so parent can auto-scroll */
+  onTypingProgress?: () => void
 }
+
+// Track which message IDs have already been animated (persists across re-renders)
+const animatedMessageIds = new Set<string>()
 
 /**
  * ChatMessages - Terminal-style message list with typewriter effect
@@ -16,15 +21,26 @@ interface ChatMessagesProps {
  * - Blinking cursor during typing
  * - Monospace font throughout
  */
-export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
+export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, onTypingProgress }) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
-  }, [messages])
+  }, [])
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, scrollToBottom])
+
+  // Handle typing progress - scroll during animation
+  const handleTypingProgress = useCallback(() => {
+    scrollToBottom()
+    onTypingProgress?.()
+  }, [scrollToBottom, onTypingProgress])
 
   // Empty state
   if (messages.length === 0) {
@@ -49,6 +65,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
           key={message.id}
           message={message}
           isLatest={index === messages.length - 1}
+          onTypingProgress={handleTypingProgress}
         />
       ))}
     </div>
@@ -57,63 +74,103 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages }) => {
 
 /**
  * TerminalMessage - Individual message with typewriter effect
+ *
+ * Key behavior:
+ * - User messages show immediately (no animation)
+ * - MILO messages animate ONLY ONCE, ever - tracked by message ID
+ * - Previously animated messages show full text immediately
+ * - Calls onTypingProgress during animation for scroll sync
  */
 const TerminalMessage: React.FC<{
   message: ChatMessage
   isLatest: boolean
-}> = ({ message, isLatest }) => {
+  onTypingProgress?: () => void
+}> = ({ message, isLatest, onTypingProgress }) => {
   const isUser = message.role === 'user'
-  const [displayedText, setDisplayedText] = useState('')
+
+  // Check if this message has already been animated (persists across component lifecycle)
+  const alreadyAnimated = animatedMessageIds.has(message.id)
+
+  const [displayedText, setDisplayedText] = useState(() => {
+    // Initialize with full text if already animated or is user message
+    if (isUser || alreadyAnimated) return message.content
+    return ''
+  })
   const [isTyping, setIsTyping] = useState(false)
-  const [hasTyped, setHasTyped] = useState(false)
 
-  // Typewriter effect for MILO messages
+  // Typewriter effect for MILO messages - runs ONLY ONCE per message ID
   useEffect(() => {
-    // Only animate the latest MILO message that hasn't been typed yet
-    if (!isUser && isLatest && !hasTyped) {
-      setIsTyping(true)
-      setDisplayedText('')
+    // User messages: show immediately
+    if (isUser) {
+      setDisplayedText(message.content)
+      return
+    }
 
-      const text = message.content
-      let currentIndex = 0
+    // Already animated: show full text immediately
+    if (alreadyAnimated) {
+      setDisplayedText(message.content)
+      return
+    }
 
-      // Variable speed for more natural feel
-      const getDelay = () => {
-        const char = text[currentIndex]
-        if (char === '.' || char === '!' || char === '?') return 80
-        if (char === ',') return 40
-        if (char === '\n') return 60
-        return 15 + Math.random() * 15 // 15-30ms base
-      }
+    // Only animate the latest MILO message that hasn't been animated yet
+    if (!isLatest) {
+      // Not the latest - mark as animated and show full text
+      animatedMessageIds.add(message.id)
+      setDisplayedText(message.content)
+      return
+    }
 
-      const typeNextChar = () => {
-        if (currentIndex < text.length) {
-          setDisplayedText(text.slice(0, currentIndex + 1))
-          currentIndex++
-          setTimeout(typeNextChar, getDelay())
-        } else {
-          setIsTyping(false)
-          setHasTyped(true)
+    // This is the latest, not animated yet - start typewriter
+    setIsTyping(true)
+    setDisplayedText('')
+
+    const text = message.content
+    let currentIndex = 0
+    let animationActive = true
+
+    // Variable speed for more natural feel
+    const getDelay = () => {
+      const char = text[currentIndex]
+      if (char === '.' || char === '!' || char === '?') return 80
+      if (char === ',') return 40
+      if (char === '\n') return 60
+      return 15 + Math.random() * 15 // 15-30ms base
+    }
+
+    const typeNextChar = () => {
+      if (!animationActive) return
+
+      if (currentIndex < text.length) {
+        setDisplayedText(text.slice(0, currentIndex + 1))
+        currentIndex++
+
+        // Notify parent for scroll sync every few characters
+        if (currentIndex % 5 === 0) {
+          onTypingProgress?.()
         }
+
+        setTimeout(typeNextChar, getDelay())
+      } else {
+        // Animation complete - mark as animated permanently
+        animatedMessageIds.add(message.id)
+        setIsTyping(false)
+        onTypingProgress?.() // Final scroll
       }
-
-      // Small initial delay before starting
-      setTimeout(typeNextChar, 100)
-    } else if (!isUser && !isLatest) {
-      // Show full text for older messages
-      setDisplayedText(message.content)
-      setHasTyped(true)
-    } else if (isUser) {
-      setDisplayedText(message.content)
     }
-  }, [message.content, isUser, isLatest, hasTyped])
 
-  // Reset hasTyped when message changes
-  useEffect(() => {
-    if (isLatest && !isUser) {
-      setHasTyped(false)
+    // Small initial delay before starting
+    const timer = setTimeout(typeNextChar, 100)
+
+    // Cleanup if component unmounts during animation
+    return () => {
+      animationActive = false
+      clearTimeout(timer)
+      // If we started animating but didn't finish, mark as animated anyway
+      if (!animatedMessageIds.has(message.id)) {
+        animatedMessageIds.add(message.id)
+      }
     }
-  }, [message.id, isLatest, isUser])
+  }, [message.id, message.content, isUser, isLatest, alreadyAnimated, onTypingProgress])
 
   return (
     <div className="mb-3">

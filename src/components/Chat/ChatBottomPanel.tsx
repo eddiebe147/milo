@@ -28,7 +28,6 @@ import { ApiKeySettings } from '../Settings/ApiKeySettings'
 export const ChatBottomPanel: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const wasGeneratingRef = useRef(false)
 
@@ -44,13 +43,6 @@ export const ChatBottomPanel: React.FC = () => {
     startNewConversation,
     loadConversations,
   } = useChatStore()
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (isExpanded && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages, isExpanded])
 
   // Auto-expand when AI starts generating (user sent a message)
   // Use ref to track previous state and avoid setState in effect body
@@ -219,7 +211,6 @@ export const ChatBottomPanel: React.FC = () => {
               ) : (
                 <ChatMessages messages={messages} />
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Error display */}
