@@ -337,4 +337,23 @@ export const tasksRepository = {
     const rows = db.prepare(query).all(...signalQueueIds) as TaskRow[]
     return rows.map(rowToTask)
   },
+
+  // Reorder signal queue by updating priorities
+  // Takes an array of task IDs in the desired order and updates their priorities
+  reorderSignalQueue(taskIds: string[]): void {
+    const db = getDatabase()
+
+    // Update each task's priority based on its position in the array
+    // Lower index = higher priority (lower priority number)
+    const updateStmt = db.prepare('UPDATE tasks SET priority = ?, updated_at = ? WHERE id = ?')
+    const now = new Date().toISOString()
+
+    db.transaction(() => {
+      taskIds.forEach((taskId, index) => {
+        // Priority starts at 1 (highest) and increments
+        const priority = index + 1
+        updateStmt.run(priority, now, taskId)
+      })
+    })()
+  },
 }

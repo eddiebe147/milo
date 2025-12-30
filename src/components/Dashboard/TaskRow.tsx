@@ -9,7 +9,10 @@ import {
     Zap,
     Globe,
     Search,
-    Hand
+    Hand,
+    Plus,
+    X,
+    Trash2
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
@@ -33,9 +36,12 @@ interface TaskRowProps {
     relatedTasks: Task[]
     isExecuting?: boolean
     actionPlan?: TaskActionPlan | null
+    projectColor?: string // hex color from project/category
+    projectName?: string // project name for tooltip
     onToggleComplete: () => void
     onStart: () => void
     onExpand: () => void
+    onDelete?: () => void
 }
 
 // Icon for each action type
@@ -65,13 +71,18 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     relatedTasks,
     isExecuting = false,
     actionPlan,
+    projectColor,
+    projectName,
     onToggleComplete,
     onStart,
     onExpand,
+    onDelete,
 }) => {
     const isCompleted = task.status === 'completed'
     const isInProgress = task.status === 'in_progress' || isActive
     const [isHovering, setIsHovering] = useState(false)
+    const [justCompleted, setJustCompleted] = useState(false)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
     // Priority color mapping
     const getPriorityBadge = (priority: number) => {
@@ -82,6 +93,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 
     const priorityBadge = getPriorityBadge(task.priority)
 
+    // Handle task completion with animation
+    const handleToggleComplete = () => {
+        if (!isCompleted) {
+            setJustCompleted(true)
+            // Reset animation state after animation completes
+            setTimeout(() => setJustCompleted(false), 500)
+        }
+        onToggleComplete()
+    }
+
     return (
         <div
             className={cn(
@@ -89,7 +110,8 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                 isInProgress && !isCompleted
                     ? 'border-l-pipboy-green bg-pipboy-green/5'
                     : 'border-l-transparent',
-                isCompleted && 'opacity-60'
+                isCompleted && 'opacity-60',
+                justCompleted && 'task-complete-animation'
             )}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
@@ -98,7 +120,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             <div className="p-3 flex items-center gap-3">
                 {/* Completion circle */}
                 <button
-                    onClick={onToggleComplete}
+                    onClick={handleToggleComplete}
                     disabled={isCompleted}
                     className={cn(
                         'flex-shrink-0 transition-all duration-300',
@@ -123,6 +145,18 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                         />
                     )}
                 </button>
+
+                {/* Project color indicator */}
+                {projectColor && (
+                    <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{
+                            backgroundColor: projectColor,
+                            boxShadow: `0 0 4px ${projectColor}60`,
+                        }}
+                        title={projectName || 'Project'}
+                    />
+                )}
 
                 {/* Task title */}
                 <span
@@ -265,6 +299,43 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                                     </li>
                                 )}
                             </ul>
+                        </div>
+                    )}
+
+                    {/* Delete action - +/X pattern */}
+                    {onDelete && (
+                        <div className="pt-2 border-t border-pipboy-border/30 flex items-center gap-2">
+                            {!showDeleteConfirm ? (
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="flex items-center gap-1 text-[10px] text-pipboy-green-dim hover:text-red-400 transition-colors"
+                                    title="Delete task"
+                                >
+                                    <Plus size={12} className="rotate-45" />
+                                    <span>Delete</span>
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-red-400">Delete this task?</span>
+                                    <button
+                                        onClick={() => {
+                                            onDelete()
+                                            setShowDeleteConfirm(false)
+                                        }}
+                                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 border border-red-500/50 rounded-sm hover:bg-red-500/30 transition-colors"
+                                    >
+                                        <Trash2 size={10} />
+                                        <span>Yes</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-pipboy-green-dim border border-pipboy-border rounded-sm hover:border-pipboy-green/50 transition-colors"
+                                    >
+                                        <X size={10} />
+                                        <span>No</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

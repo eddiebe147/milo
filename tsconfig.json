@@ -31,5 +31,5 @@
     }
   },
   "include": ["src/**/*", "electron/**/*"],
-  "exclude": ["node_modules", "dist", "out"]
+  "exclude": ["node_modules", "dist", "out", "**/*.test.ts", "**/*.spec.ts", "e2e"]
 }

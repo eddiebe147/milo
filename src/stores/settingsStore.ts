@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { UserSettings, AppClassification } from '../types'
+import type { UserSettings, AppClassification, ThemeColors } from '../types'
 
 // Default settings
 const DEFAULT_SETTINGS: UserSettings = {
@@ -23,9 +23,19 @@ const DEFAULT_SETTINGS: UserSettings = {
   refillMode: 'endless',
 }
 
+// Default theme colors
+const DEFAULT_THEME_COLORS: ThemeColors = {
+  primaryColor: '#00ff41',
+  accentColor: '#ffb000',
+  dangerColor: '#ff3333',
+  userMessageColor: '#00ff41',
+  aiMessageColor: '#ffb000',
+}
+
 interface SettingsState {
   settings: UserSettings
   classifications: AppClassification[]
+  themeColors: ThemeColors
   isLoading: boolean
   error: string | null
 
@@ -36,11 +46,15 @@ interface SettingsState {
   updateClassification: (classification: Omit<AppClassification, 'id' | 'createdAt'>) => Promise<void>
   toggleAlwaysOnTop: () => Promise<boolean>
   toggleRefillMode: () => void
+  loadThemeColors: () => Promise<void>
+  setThemeColor: (key: keyof ThemeColors, value: string) => Promise<void>
+  setThemeColors: (colors: Partial<ThemeColors>) => Promise<void>
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   classifications: [],
+  themeColors: DEFAULT_THEME_COLORS,
   isLoading: false,
   error: null,
 
@@ -123,5 +137,71 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       },
     }))
     // TODO: Persist to database via IPC when settings persistence is implemented
+  },
+
+  loadThemeColors: async () => {
+    try {
+      const backendColors = await window.milo?.settings.getThemeColors()
+      if (backendColors) {
+        // Convert backend format (themePrimaryColor) to frontend format (primaryColor)
+        const colors: ThemeColors = {
+          primaryColor: backendColors.themePrimaryColor,
+          accentColor: backendColors.themeAccentColor,
+          dangerColor: backendColors.themeDangerColor,
+          userMessageColor: backendColors.themeUserMessageColor,
+          aiMessageColor: backendColors.themeAiMessageColor,
+        }
+        set({ themeColors: colors })
+      }
+    } catch (error) {
+      console.error('Failed to load theme colors:', error)
+      set({ themeColors: DEFAULT_THEME_COLORS })
+    }
+  },
+
+  setThemeColor: async (key: keyof ThemeColors, value: string) => {
+    // Update local state immediately for live preview
+    set((state) => ({
+      themeColors: { ...state.themeColors, [key]: value }
+    }))
+
+    // Map frontend key to backend key
+    const keyMap: Record<keyof ThemeColors, string> = {
+      primaryColor: 'themePrimaryColor',
+      accentColor: 'themeAccentColor',
+      dangerColor: 'themeDangerColor',
+      userMessageColor: 'themeUserMessageColor',
+      aiMessageColor: 'themeAiMessageColor',
+    }
+
+    try {
+      await window.milo?.settings.setThemeColor(
+        keyMap[key] as 'themePrimaryColor' | 'themeAccentColor' | 'themeDangerColor' | 'themeUserMessageColor' | 'themeAiMessageColor',
+        value
+      )
+    } catch (error) {
+      console.error('Failed to save theme color:', error)
+    }
+  },
+
+  setThemeColors: async (colors: Partial<ThemeColors>) => {
+    // Update local state immediately for live preview
+    set((state) => ({
+      themeColors: { ...state.themeColors, ...colors }
+    }))
+
+    // Convert frontend format to backend format
+    const backendColors: Record<string, string> = {}
+    if (colors.primaryColor) backendColors.themePrimaryColor = colors.primaryColor
+    if (colors.accentColor) backendColors.themeAccentColor = colors.accentColor
+    if (colors.dangerColor) backendColors.themeDangerColor = colors.dangerColor
+    if (colors.userMessageColor) backendColors.themeUserMessageColor = colors.userMessageColor
+    if (colors.aiMessageColor) backendColors.themeAiMessageColor = colors.aiMessageColor
+
+    try {
+      await window.milo?.settings.setThemeColors(backendColors)
+    } catch (error) {
+      console.error('Failed to save theme colors:', error)
+    }
   },
 }))

@@ -275,7 +275,102 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v2 complete')
   }
 
-  // Future migrations go here (if version < 3, etc.)
+  if (version < 3) {
+    console.log('[Database] Running migration v3: Add chat conversations and messages')
+
+    // Create chat_conversations table
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT 'New Chat',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run()
+
+    // Create chat_messages table
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
+      )
+    `).run()
+
+    // Create indexes for faster queries
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
+      ON chat_messages(conversation_id, created_at)
+    `).run()
+
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_chat_conversations_updated
+      ON chat_conversations(updated_at DESC)
+    `).run()
+
+    database.pragma('user_version = 3')
+    console.log('[Database] Migration v3 complete')
+  }
+
+  if (version < 4) {
+    console.log('[Database] Running migration v4: Add theme color columns to user_settings')
+
+    // Add theme color columns to user_settings table
+    const themeColumns = [
+      "theme_primary_color TEXT DEFAULT '#00ff41'",
+      "theme_accent_color TEXT DEFAULT '#ffb000'",
+      "theme_danger_color TEXT DEFAULT '#ff3333'",
+      "theme_user_message_color TEXT DEFAULT '#00ff41'",
+      "theme_ai_message_color TEXT DEFAULT '#ffb000'",
+    ]
+
+    for (const column of themeColumns) {
+      try {
+        database.prepare(`ALTER TABLE user_settings ADD COLUMN ${column}`).run()
+      } catch (e) {
+        // Column might already exist, ignore error
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        if (!errorMessage.includes('duplicate column')) {
+          console.warn(`[Database] Migration warning: ${errorMessage}`)
+        }
+      }
+    }
+
+    database.pragma('user_version = 4')
+    console.log('[Database] Migration v4 complete')
+  }
+
+  if (version < 5) {
+    console.log('[Database] Running migration v5: Add analytics settings columns')
+
+    // Add analytics_enabled column (defaults to false - opt-in required)
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN analytics_enabled INTEGER DEFAULT 0`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Add analytics_id column for anonymous user identifier
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN analytics_id TEXT`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    database.pragma('user_version = 5')
+    console.log('[Database] Migration v5 complete')
+  }
+
+  // Future migrations go here (if version < 6, etc.)
 }
 
 // Default app classifications for common productivity apps

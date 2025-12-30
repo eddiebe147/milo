@@ -125,6 +125,19 @@ export interface ChatInput {
   context?: ChatContext
 }
 
+// Tool call result from chat
+export interface ToolCall {
+  id: string
+  name: string
+  input: Record<string, unknown>
+}
+
+// Chat response with potential tool calls
+export interface ChatResponse {
+  message: string
+  toolCalls?: ToolCall[]
+}
+
 // Task action classification types
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
 
@@ -285,8 +298,137 @@ class ClaudeClient {
       : 'Time to refocus?'
   }
 
-  // Chat with MILO
-  async chat(input: ChatInput): Promise<string> {
+  // Tool definitions for task management
+  private getTaskManagementTools(): Anthropic.Messages.Tool[] {
+    return [
+      {
+        name: 'complete_task',
+        description: 'Mark a task as completed. Use when the user says they finished a task or asks you to mark something done.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to complete',
+            },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'update_task_priority',
+        description: 'Change the priority of a task (1=lowest, 5=critical). Use when user wants to reprioritize tasks.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to update',
+            },
+            priority: {
+              type: 'number',
+              description: 'New priority level (1-5)',
+              minimum: 1,
+              maximum: 5,
+            },
+          },
+          required: ['task_id', 'priority'],
+        },
+      },
+      {
+        name: 'update_task_status',
+        description: 'Change task status. Use pending for not started, in_progress for active work, completed for done.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to update',
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'in_progress', 'completed', 'deferred'],
+              description: 'New status',
+            },
+          },
+          required: ['task_id', 'status'],
+        },
+      },
+      {
+        name: 'create_task',
+        description: 'Create a new task. Use when user wants to add a task to their list.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            title: {
+              type: 'string',
+              description: 'Task title - clear, actionable description',
+            },
+            description: {
+              type: 'string',
+              description: 'Optional additional details',
+            },
+            priority: {
+              type: 'number',
+              description: 'Priority level (1-5), defaults to 3',
+              minimum: 1,
+              maximum: 5,
+            },
+            category_id: {
+              type: 'string',
+              description: 'Optional project/category ID to assign task to',
+            },
+          },
+          required: ['title'],
+        },
+      },
+      {
+        name: 'delete_task',
+        description: 'Delete a task permanently. Use only when user explicitly wants to remove a task.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to delete',
+            },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'start_task',
+        description: 'Mark a task as started/in-progress and set it as the active task.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to start',
+            },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'defer_task',
+        description: 'Defer a task to a later date. Use when user wants to postpone something.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to defer',
+            },
+          },
+          required: ['task_id'],
+        },
+      },
+    ]
+  }
+
+  // Chat with MILO - now with tool use support
+  async chat(input: ChatInput): Promise<ChatResponse> {
     if (!this.client) {
       throw new Error('Claude client not initialized. Please set your API key.')
     }
@@ -296,6 +438,19 @@ class ClaudeClient {
     if (input.context) {
       systemPrompt += '\n\n' + this.formatChatContext(input.context)
     }
+
+    // Add tool usage instructions
+    systemPrompt += `\n\n## Task Management Tools
+You have tools to manage tasks. When the user asks you to:
+- Mark something done → use complete_task
+- Change priority → use update_task_priority
+- Create a new task → use create_task
+- Start working on something → use start_task
+- Postpone/defer → use defer_task
+- Delete a task → use delete_task
+
+IMPORTANT: Use task IDs from the context provided. Match task titles to find the correct ID.
+After using a tool, confirm the action to the user.`
 
     // Build conversation messages
     const messages: Anthropic.Messages.MessageParam[] = [
@@ -314,11 +469,29 @@ class ClaudeClient {
       max_tokens: 1024,
       system: systemPrompt,
       messages,
+      tools: this.getTaskManagementTools(),
     })
 
-    return response.content[0].type === 'text'
-      ? response.content[0].text.trim()
-      : 'Unable to process your request.'
+    // Extract text and tool calls from response
+    let textContent = ''
+    const toolCalls: ToolCall[] = []
+
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        textContent += block.text
+      } else if (block.type === 'tool_use') {
+        toolCalls.push({
+          id: block.id,
+          name: block.name,
+          input: block.input as Record<string, unknown>,
+        })
+      }
+    }
+
+    return {
+      message: textContent.trim() || (toolCalls.length > 0 ? '' : 'Unable to process your request.'),
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    }
   }
 
   // Classify a task and determine the best action to execute it

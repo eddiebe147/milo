@@ -5,17 +5,40 @@ import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
+import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
+import { Onboarding } from '@/components/Onboarding'
 import { useNudgeStore, useAIStore } from '@/stores'
+import { useThemeColors } from '@/hooks/useThemeColors'
+import { ModalProvider, useModal } from '@/contexts/ModalContext'
 
 type View = 'dashboard' | 'settings' | 'onboarding' | 'plan-import'
 
-function App() {
-  const [currentView, setCurrentView] = useState<View>('dashboard')
-  const [isMorningOpen, setIsMorningOpen] = useState(false)
-  const [isEveningOpen, setIsEveningOpen] = useState(false)
+/**
+ * Check if onboarding has been completed
+ */
+function hasCompletedOnboarding(): boolean {
+  return localStorage.getItem('milo-onboarding-complete') === 'true'
+}
+
+/**
+ * AppContent - Main app component that uses modal context
+ * Separated from App to allow ModalProvider to wrap it
+ */
+function AppContent() {
+  // Check if this is first launch (onboarding not completed)
+  const [currentView, setCurrentView] = useState<View>(
+    hasCompletedOnboarding() ? 'dashboard' : 'onboarding'
+  )
 
   const { activeNudges, dismissNudge, snoozeApp, setupEventListener } = useNudgeStore()
   const { startMorningBriefing, startEveningReview } = useAIStore()
+  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette()
+  const { isOpen, openModalWithType, closeModal } = useModal()
+
+  // Inject theme colors as CSS variables
+  useThemeColors()
 
   // Set up nudge event listener
   useEffect(() => {
@@ -27,12 +50,12 @@ function App() {
   useEffect(() => {
     const unsubMorning = window.milo?.events.onShowMorningBriefing(() => {
       startMorningBriefing()
-      setIsMorningOpen(true)
+      openModalWithType('morningBriefing')
     })
 
     const unsubEvening = window.milo?.events.onShowEveningReview(() => {
       startEveningReview()
-      setIsEveningOpen(true)
+      openModalWithType('eveningReview')
     })
 
     const unsubSettings = window.milo?.events.onShowSettings(() => {
@@ -44,7 +67,7 @@ function App() {
       unsubEvening?.()
       unsubSettings?.()
     }
-  }, [startMorningBriefing, startEveningReview])
+  }, [startMorningBriefing, startEveningReview, openModalWithType])
 
   // Handle snooze from nudge toast
   const handleSnooze = (index: number, minutes: number) => {
@@ -55,7 +78,7 @@ function App() {
   }
 
   return (
-    <div className="h-full w-full bg-pipboy-background flex flex-col overflow-hidden rounded-lg">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-pipboy-background">
       {/* CRT Effect Overlay */}
       <CRTOverlay />
 
@@ -64,6 +87,9 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
+        {currentView === 'onboarding' && (
+          <Onboarding onComplete={() => setCurrentView('dashboard')} />
+        )}
         {currentView === 'dashboard' && (
           <DashboardV3 onOpenMenu={() => setCurrentView('settings')} />
         )}
@@ -71,27 +97,28 @@ function App() {
           <PlanImporter onClose={() => setCurrentView('dashboard')} />
         )}
         {currentView === 'settings' && (
-          <div className="p-4 text-pipboy-green">
-            <h2 className="text-xl glow-medium mb-4">Settings</h2>
-            <p className="text-pipboy-green-dim">Coming soon...</p>
-            <button
-              className="btn-pipboy mt-4"
-              onClick={() => setCurrentView('dashboard')}
-            >
-              Back to Dashboard
-            </button>
-          </div>
+          <SettingsPage onBack={() => setCurrentView('dashboard')} />
         )}
       </main>
 
       {/* Dialogue Modals */}
       <MorningBriefing
-        isOpen={isMorningOpen}
-        onClose={() => setIsMorningOpen(false)}
+        isOpen={isOpen('morningBriefing')}
+        onClose={closeModal}
       />
       <EveningReview
-        isOpen={isEveningOpen}
-        onClose={() => setIsEveningOpen(false)}
+        isOpen={isOpen('eveningReview')}
+        onClose={closeModal}
+      />
+
+      {/* Settings Modals */}
+      <ThemeSettings
+        isOpen={isOpen('themeSettings')}
+        onClose={closeModal}
+      />
+      <ApiKeySettings
+        isOpen={isOpen('apiSettings')}
+        onClose={closeModal}
       />
 
       {/* Nudge Toasts */}
@@ -100,7 +127,27 @@ function App() {
         onDismiss={dismissNudge}
         onSnooze={handleSnooze}
       />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={closeCommandPalette}
+        onNavigate={setCurrentView}
+      />
     </div>
+  )
+}
+
+/**
+ * App - Root component with ErrorBoundary and ModalProvider
+ */
+function App() {
+  return (
+    <ErrorBoundary>
+      <ModalProvider>
+        <AppContent />
+      </ModalProvider>
+    </ErrorBoundary>
   )
 }
 

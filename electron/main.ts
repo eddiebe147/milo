@@ -1,12 +1,30 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
-import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository, settingsRepository } from './repositories'
+import {
+  initDatabase,
+  closeDatabase,
+  activityMonitor,
+  detectState,
+  scoringEngine,
+  nudgeManager,
+} from './services'
+import * as analytics from './services/analytics'
+import {
+  goalsRepository,
+  tasksRepository,
+  categoriesRepository,
+  activityRepository,
+  scoresRepository,
+  classificationsRepository,
+  settingsRepository,
+  chatRepository,
+} from './repositories'
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
-import { taskExecutor } from './services/TaskExecutor'
+import { taskExecutor, type ExecutionTarget } from './services/TaskExecutor'
+import type { ThemeColors } from './repositories/settings'
 
 // Window references
 let mainWindow: BrowserWindow | null = null
@@ -21,12 +39,13 @@ function createWindow(): void {
     show: false,
     frame: false,
     transparent: true,
-    vibrancy: 'under-window',
-    visualEffectState: 'active',
+    backgroundColor: '#00000000', // Fully transparent
+    hasShadow: true,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 12, y: 12 },
+    roundedCorners: true, // macOS 11+
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
@@ -150,9 +169,13 @@ function setupIPC(): void {
   ipcMain.handle('goals:getAll', () => goalsRepository.getAll())
   ipcMain.handle('goals:getById', (_, id: string) => goalsRepository.getById(id))
   ipcMain.handle('goals:getHierarchy', () => goalsRepository.getHierarchy())
-  ipcMain.handle('goals:create', (_, goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) =>
-    goalsRepository.create(goal)
-  )
+  ipcMain.handle('goals:create', (_, goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const created = goalsRepository.create(goal)
+    if (created) {
+      analytics.trackEvent('goal_created')
+    }
+    return created
+  })
   ipcMain.handle('goals:update', (_, id: string, updates: Partial<Goal>) =>
     goalsRepository.update(id, updates)
   )
@@ -163,15 +186,25 @@ function setupIPC(): void {
   ipcMain.handle('tasks:getToday', () => tasksRepository.getToday())
   ipcMain.handle('tasks:getById', (_, id: string) => tasksRepository.getById(id))
   ipcMain.handle('tasks:getActive', () => tasksRepository.getActive())
-  ipcMain.handle('tasks:create', (_, task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) =>
-    tasksRepository.create(task)
-  )
+  ipcMain.handle('tasks:create', async (_, task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const created = await tasksRepository.create(task)
+    if (created) {
+      analytics.trackEvent('task_created')
+    }
+    return created
+  })
   ipcMain.handle('tasks:update', (_, id: string, updates: Partial<Task>) =>
     tasksRepository.update(id, updates)
   )
   ipcMain.handle('tasks:delete', (_, id: string) => tasksRepository.delete(id))
   ipcMain.handle('tasks:start', (_, id: string) => tasksRepository.start(id))
-  ipcMain.handle('tasks:complete', (_, id: string) => tasksRepository.complete(id))
+  ipcMain.handle('tasks:complete', async (_, id: string) => {
+    const completed = await tasksRepository.complete(id)
+    if (completed) {
+      analytics.trackEvent('task_completed')
+    }
+    return completed
+  })
   ipcMain.handle('tasks:defer', (_, id: string) => tasksRepository.defer(id))
 
   // New task methods for signal queue & continuity
@@ -181,6 +214,7 @@ function setupIPC(): void {
   ipcMain.handle('tasks:getBacklog', (_, signalQueueIds: string[]) => tasksRepository.getBacklog(signalQueueIds))
   ipcMain.handle('tasks:getWorkedYesterday', () => tasksRepository.getWorkedYesterday())
   ipcMain.handle('tasks:recordWork', (_, id: string) => tasksRepository.recordWork(id))
+  ipcMain.handle('tasks:reorderSignalQueue', (_, taskIds: string[]) => tasksRepository.reorderSignalQueue(taskIds))
 
   // Categories CRUD
   ipcMain.handle('categories:getAll', () => categoriesRepository.getAll())
@@ -225,18 +259,26 @@ function setupIPC(): void {
 
   ipcMain.handle('ai:morningBriefing', async (_, input: MorningBriefingInput) => {
     try {
-      return await claudeClient.generateMorningBriefing(input)
+      analytics.trackEvent('morning_briefing_started')
+      const result = await claudeClient.generateMorningBriefing(input)
+      analytics.trackEvent('morning_briefing_completed')
+      return result
     } catch (error) {
       console.error('[IPC] Morning briefing error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'morning_briefing' })
       throw error
     }
   })
 
   ipcMain.handle('ai:eveningReview', async (_, input: EveningReviewInput) => {
     try {
-      return await claudeClient.generateEveningReview(input)
+      analytics.trackEvent('evening_review_started')
+      const result = await claudeClient.generateEveningReview(input)
+      analytics.trackEvent('evening_review_completed')
+      return result
     } catch (error) {
       console.error('[IPC] Evening review error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'evening_review' })
       throw error
     }
   })
@@ -271,12 +313,13 @@ function setupIPC(): void {
     }
   })
 
-  // Chat with MILO
+  // Chat with MILO - now with tool execution
   ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> }) => {
     try {
-      // Gather context
+      // Gather context - include task IDs for tool matching
       const goals = goalsRepository.getAll()
       const todayTasks = tasksRepository.getToday()
+      const allIncompleteTasks = tasksRepository.getAllIncomplete()
       const activeTask = tasksRepository.getActive()
       const dailyScore = scoresRepository.getToday()
 
@@ -284,12 +327,15 @@ function setupIPC(): void {
       const today = new Date().toISOString().split('T')[0]
       const activitySummary = activityRepository.getSummary(today)
 
-      return await claudeClient.chat({
+      // Use all incomplete tasks for better context matching
+      const tasksForContext = allIncompleteTasks.length > 0 ? allIncompleteTasks : todayTasks
+
+      const response = await claudeClient.chat({
         message: input.message,
         conversationHistory: input.conversationHistory,
         context: {
           goals,
-          todayTasks,
+          todayTasks: tasksForContext,
           activeTask: activeTask || undefined,
           dailyScore: dailyScore || undefined,
           activitySummary: {
@@ -299,6 +345,94 @@ function setupIPC(): void {
           },
         },
       })
+
+      // Execute any tool calls
+      const toolResults: string[] = []
+      if (response.toolCalls) {
+        for (const toolCall of response.toolCalls) {
+          try {
+            let result = ''
+            const input = toolCall.input
+
+            switch (toolCall.name) {
+              case 'complete_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.complete(taskId)
+                result = task ? `Completed: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'update_task_priority': {
+                const taskId = input.task_id as string
+                const priority = input.priority as number
+                const task = tasksRepository.update(taskId, { priority })
+                result = task ? `Updated priority for "${task.title}" to ${priority}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'update_task_status': {
+                const taskId = input.task_id as string
+                const status = input.status as string
+                const task = tasksRepository.update(taskId, { status: status as 'pending' | 'in_progress' | 'completed' | 'deferred' })
+                result = task ? `Updated status for "${task.title}" to ${status}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'create_task': {
+                const today = new Date().toISOString().split('T')[0]
+                const task = tasksRepository.create({
+                  title: input.title as string,
+                  description: (input.description as string) || undefined,
+                  priority: (input.priority as number) || 3,
+                  categoryId: (input.category_id as string) || undefined,
+                  status: 'pending',
+                  goalId: null,
+                  scheduledDate: today,
+                  estimatedDays: 1,
+                  rationale: undefined,
+                })
+                result = `Created task: ${task.title}`
+                break
+              }
+              case 'delete_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.getById(taskId)
+                const deleted = tasksRepository.delete(taskId)
+                result = deleted && task ? `Deleted: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'start_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.start(taskId)
+                result = task ? `Started: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              case 'defer_task': {
+                const taskId = input.task_id as string
+                const task = tasksRepository.defer(taskId)
+                result = task ? `Deferred: ${task.title}` : `Task not found: ${taskId}`
+                break
+              }
+              default:
+                result = `Unknown tool: ${toolCall.name}`
+            }
+
+            toolResults.push(result)
+            console.log(`[IPC] Tool executed: ${toolCall.name} → ${result}`)
+          } catch (toolError) {
+            console.error(`[IPC] Tool error (${toolCall.name}):`, toolError)
+            toolResults.push(`Error: ${toolCall.name} failed`)
+          }
+        }
+      }
+
+      // Combine message with tool results
+      let finalMessage = response.message
+      if (toolResults.length > 0) {
+        const toolSummary = toolResults.join('\n')
+        finalMessage = finalMessage
+          ? `${finalMessage}\n\n✓ Actions taken:\n${toolSummary}`
+          : `✓ Actions taken:\n${toolSummary}`
+      }
+
+      return finalMessage
     } catch (error) {
       console.error('[IPC] Chat error:', error)
       throw error
@@ -339,6 +473,11 @@ function setupIPC(): void {
         createdTaskIds.push(task.id)
       }
 
+      analytics.trackEvent('plan_imported', {
+        goalsCreated: createdGoalIds.length,
+        tasksCreated: createdTaskIds.length,
+      })
+
       return {
         success: true,
         goalsCreated: createdGoalIds.length,
@@ -348,6 +487,7 @@ function setupIPC(): void {
       }
     } catch (error) {
       console.error('[IPC] Plan apply error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'plan_apply' })
       throw error
     }
   })
@@ -376,6 +516,27 @@ function setupIPC(): void {
   })
   ipcMain.handle('settings:update', (_, updates) => {
     settingsRepository.update(updates)
+    return true
+  })
+  ipcMain.handle('settings:getThemeColors', () => settingsRepository.getThemeColors())
+  ipcMain.handle('settings:setThemeColor', (_, key: keyof ThemeColors, value: string) => {
+    settingsRepository.setThemeColor(key, value)
+    return true
+  })
+  ipcMain.handle('settings:setThemeColors', (_, colors) => {
+    settingsRepository.setThemeColors(colors)
+    return true
+  })
+
+  // Analytics management
+  ipcMain.handle('analytics:isEnabled', () => analytics.isAnalyticsEnabled())
+  ipcMain.handle('analytics:isAvailable', () => analytics.isAnalyticsAvailable())
+  ipcMain.handle('analytics:enable', () => {
+    analytics.enableAnalytics()
+    return true
+  })
+  ipcMain.handle('analytics:disable', () => {
+    analytics.disableAnalytics()
     return true
   })
 
@@ -419,6 +580,69 @@ function setupIPC(): void {
 
   ipcMain.handle('taskExecution:hasClaudeCli', () => {
     return taskExecutor.hasClaudeCli()
+  })
+
+  // New modal-based execution methods
+  ipcMain.handle('taskExecution:executeWithTarget', async (_, target: ExecutionTarget, prompt: string, projectPath: string | null) => {
+    try {
+      return await taskExecutor.executeWithTarget(target, prompt, projectPath)
+    } catch (error) {
+      console.error('[IPC] Execute with target error:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('taskExecution:generatePrompt', async (_, taskId: string) => {
+    try {
+      const task = tasksRepository.getById(taskId)
+      if (!task) {
+        throw new Error(`Task not found: ${taskId}`)
+      }
+
+      // Find the best project path for this task
+      const projectPath = await taskExecutor.findProjectForTask(task)
+
+      // Generate the prompt
+      const prompt = await taskExecutor.generateTaskPrompt(task, projectPath)
+
+      return { prompt, projectPath }
+    } catch (error) {
+      console.error('[IPC] Generate prompt error:', error)
+      throw error
+    }
+  })
+
+  // ==================== Chat Conversations & Messages ====================
+
+  // Conversations
+  ipcMain.handle('chat:getAllConversations', () => chatRepository.getAllConversations())
+  ipcMain.handle('chat:getConversation', (_, id: string) => chatRepository.getConversation(id))
+  ipcMain.handle('chat:createConversation', (_, title?: string) => chatRepository.createConversation(title))
+  ipcMain.handle('chat:updateConversationTitle', (_, id: string, title: string) => {
+    chatRepository.updateConversationTitle(id, title)
+    return true
+  })
+  ipcMain.handle('chat:deleteConversation', (_, id: string) => {
+    chatRepository.deleteConversation(id)
+    return true
+  })
+  ipcMain.handle('chat:autoTitleConversation', (_, id: string) => {
+    chatRepository.autoTitleConversation(id)
+    return chatRepository.getConversation(id)
+  })
+
+  // Messages
+  ipcMain.handle('chat:getMessages', (_, conversationId: string) => chatRepository.getMessages(conversationId))
+  ipcMain.handle('chat:addMessage', (_, conversationId: string, role: 'user' | 'assistant', content: string) => {
+    const message = chatRepository.addMessage(conversationId, role, content)
+    if (role === 'user') {
+      analytics.trackEvent('chat_message_sent')
+    }
+    return message
+  })
+  ipcMain.handle('chat:deleteMessage', (_, id: string) => {
+    chatRepository.deleteMessage(id)
+    return true
   })
 }
 
@@ -482,6 +706,10 @@ app.whenReady().then(() => {
   // Initialize activity monitoring after window is created
   initActivityMonitoring()
 
+  // Initialize analytics (respects user opt-in preference)
+  analytics.initAnalytics()
+  analytics.trackEvent('app_opened')
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -499,7 +727,13 @@ app.on('window-all-closed', () => {
 })
 
 // Cleanup
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  // Track app closed before shutting down analytics
+  analytics.trackEvent('app_closed')
+
+  // Shutdown analytics (flushes pending events)
+  await analytics.shutdownAnalytics()
+
   // Stop activity monitoring
   activityMonitor.stop()
 
@@ -508,4 +742,16 @@ app.on('before-quit', () => {
 
   // Cleanup tray
   tray?.destroy()
+})
+
+// Global error handlers for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('[Main] Uncaught exception:', error)
+  analytics.trackError('error_uncaught', error, { type: 'uncaughtException' })
+})
+
+process.on('unhandledRejection', (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason))
+  console.error('[Main] Unhandled rejection:', error)
+  analytics.trackError('error_uncaught', error, { type: 'unhandledRejection' })
 })

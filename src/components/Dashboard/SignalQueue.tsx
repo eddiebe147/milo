@@ -1,7 +1,90 @@
-import React, { useState, useEffect } from 'react'
-import { Radio, Loader2, AlertCircle, RefreshCw, Pause } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Radio, Loader2, AlertCircle, RefreshCw, Pause, Filter } from 'lucide-react'
 import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
+import { TaskExecutionModal, type ExecutionTarget } from './TaskExecutionModal'
+import type { Task } from '@/types'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+
+/**
+ * SortableTaskRow Component
+ *
+ * Wraps TaskRow with drag-and-drop functionality using @dnd-kit/sortable
+ */
+interface SortableTaskRowProps {
+  task: Task
+  isActive: boolean
+  isExpanded: boolean
+  relatedTasks: Task[]
+  isExecuting: boolean
+  projectColor?: string
+  projectName?: string
+  onToggleComplete: () => void
+  onStart: () => void
+  onExpand: () => void
+  onDelete: () => void
+}
+
+const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.task.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-pipboy-border/50 last:border-b-0 ${
+        isDragging ? 'opacity-50' : ''
+      }`}
+    >
+      {/* Task row with drag handle on the far left */}
+      <div className="flex items-stretch">
+        {/* Drag handle - narrow strip on left edge */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="w-2 flex-shrink-0 cursor-grab active:cursor-grabbing bg-pipboy-border/20 hover:bg-pipboy-green/20 focus:bg-pipboy-green/30 focus:outline-none transition-colors"
+          aria-label="Drag to reorder task. Use arrow keys when focused to move."
+          role="button"
+          tabIndex={0}
+        />
+        {/* Task content */}
+        <div className="flex-1">
+          <TaskRow {...props} />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
  * SignalQueue Component
@@ -9,6 +92,7 @@ import { TaskRow } from './TaskRow'
  * Displays top 3-5 priority tasks from the signal queue with terminal aesthetic.
  * Features:
  * - Adjustable queue size (3-5 tasks)
+ * - Drag-and-drop reordering (grab left edge of task)
  * - Expandable task rows with details
  * - Smart task execution (Claude Code, Web, Research)
  * - Priority-based ordering
@@ -30,15 +114,15 @@ export const SignalQueue: React.FC = () => {
     error,
     fetchSignalQueue,
     completeTask,
-    smartStartTask,
+    deleteTask,
     getRelatedTasks,
     isExecuting,
     executingTaskId,
+    reorderSignalQueue,
   } = useTasksStore()
 
-  // Projects store for category badges (future use)
-  const _projectsStore = useProjectsStore()
-  void _projectsStore // Suppress unused warning - will use for project display
+  // Projects store for color coding and filtering
+  const { projects, getProject } = useProjectsStore()
 
   // Settings store for refill mode
   const { settings, toggleRefillMode } = useSettingsStore()
@@ -46,6 +130,22 @@ export const SignalQueue: React.FC = () => {
 
   // Track which task is expanded
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+
+  // Project filter state (null = all projects)
+  const [filterProjectId, setFilterProjectId] = useState<string | null>(null)
+
+  // Filter tasks by project
+  const filteredQueue = useMemo(() => {
+    if (!filterProjectId) return signalQueue
+    return signalQueue.filter(task => task.categoryId === filterProjectId)
+  }, [signalQueue, filterProjectId])
+
+  // Modal state
+  const [modalTask, setModalTask] = useState<Task | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
+  const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null)
+  const [projectPath, setProjectPath] = useState<string | null>(null)
 
   // Fetch queue on mount
   useEffect(() => {
@@ -58,11 +158,72 @@ export const SignalQueue: React.FC = () => {
     await completeTask(taskId)
   }
 
-  // Handler: Smart start (classifies and executes)
-  const handleSmartStart = async (taskId: string) => {
-    const result = await smartStartTask(taskId)
-    if (result) {
-      console.log('[SignalQueue] Task execution result:', result)
+  // Handler: Open execution modal (new flow)
+  const handleOpenExecutionModal = async (task: Task) => {
+    setModalTask(task)
+    setIsModalOpen(true)
+    setIsGeneratingPrompt(true)
+    setGeneratedPrompt(null)
+    setProjectPath(null)
+
+    try {
+      // Generate the prompt for this task
+      const result = await window.milo.taskExecution.generatePrompt(task.id)
+      setGeneratedPrompt(result.prompt)
+      setProjectPath(result.projectPath)
+    } catch (error) {
+      console.error('[SignalQueue] Failed to generate prompt:', error)
+      // Set a fallback prompt
+      setGeneratedPrompt(`## Task: ${task.title}\n\n${task.description || 'No description provided.'}\n\nPlease complete this task.`)
+    } finally {
+      setIsGeneratingPrompt(false)
+    }
+  }
+
+  // Handler: Close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setModalTask(null)
+    setGeneratedPrompt(null)
+    setProjectPath(null)
+  }
+
+  // Handler: Execute with selected target
+  const handleExecute = async (target: ExecutionTarget, prompt: string) => {
+    if (!modalTask) return
+
+    try {
+      // First, mark the task as started
+      await window.milo.tasks.start(modalTask.id)
+      await window.milo.tasks.recordWork(modalTask.id)
+
+      // Execute with the selected target
+      const result = await window.milo.taskExecution.executeWithTarget(target, prompt, projectPath)
+      console.log('[SignalQueue] Execution result:', result)
+
+      // Close the modal
+      handleCloseModal()
+
+      // Refresh the queue
+      await fetchSignalQueue()
+    } catch (error) {
+      console.error('[SignalQueue] Execution failed:', error)
+    }
+  }
+
+  // Handler: Regenerate prompt
+  const handleRegeneratePrompt = async () => {
+    if (!modalTask) return
+
+    setIsGeneratingPrompt(true)
+    try {
+      const result = await window.milo.taskExecution.generatePrompt(modalTask.id)
+      setGeneratedPrompt(result.prompt)
+      setProjectPath(result.projectPath)
+    } catch (error) {
+      console.error('[SignalQueue] Failed to regenerate prompt:', error)
+    } finally {
+      setIsGeneratingPrompt(false)
     }
   }
 
@@ -72,8 +233,40 @@ export const SignalQueue: React.FC = () => {
   }
 
   // Handler: Adjust queue size
-  const handleSizeChange = (size: number) => {
-    setSignalQueueSize(size)
+  const handleSizeChange = async (size: number) => {
+    await setSignalQueueSize(size)
+  }
+
+  // Setup drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts (prevents accidental drags)
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handler: Drag end - reorder tasks
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const oldIndex = signalQueue.findIndex((task) => task.id === active.id)
+    const newIndex = signalQueue.findIndex((task) => task.id === over.id)
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(signalQueue, oldIndex, newIndex)
+      const taskIds = newOrder.map((task) => task.id)
+
+      // Optimistically update UI, then persist to database
+      await reorderSignalQueue(taskIds)
+    }
   }
 
   // Loading state
@@ -132,8 +325,8 @@ export const SignalQueue: React.FC = () => {
           </span>
         </div>
 
-        {/* Controls row: Size slider + Refill mode */}
-        <div className="flex items-center justify-between">
+        {/* Controls row: Size slider + Project filter + Refill mode */}
+        <div className="flex items-center justify-between gap-2">
           {/* Size slider */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-pipboy-green-dim">SIZE:</span>
@@ -154,6 +347,24 @@ export const SignalQueue: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Project filter dropdown */}
+          <div className="flex items-center gap-1.5">
+            <Filter size={10} className="text-pipboy-green-dim" />
+            <select
+              value={filterProjectId || ''}
+              onChange={(e) => setFilterProjectId(e.target.value || null)}
+              className="text-[10px] px-1.5 py-0.5 rounded-sm bg-pipboy-surface border border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30 focus:border-pipboy-green/50 focus:outline-none cursor-pointer"
+              style={{ maxWidth: '80px' }}
+            >
+              <option value="">All</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Refill mode toggle */}
@@ -187,37 +398,67 @@ export const SignalQueue: React.FC = () => {
         </div>
       </div>
 
-      {/* Task queue */}
-      {signalQueue.length === 0 ? (
+      {/* Task queue with drag-and-drop */}
+      {filteredQueue.length === 0 ? (
         <div className="p-6 text-center text-pipboy-green-dim">
-          <p className="text-xs">No tasks in queue.</p>
+          <p className="text-xs">
+            {filterProjectId ? 'No tasks from this project in queue.' : 'No tasks in queue.'}
+          </p>
           <p className="text-[10px] mt-1 opacity-70">
-            Create tasks to populate the signal queue
+            {filterProjectId ? 'Clear filter or add tasks to this project' : 'Create tasks to populate the signal queue'}
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-pipboy-border/50">
-          {signalQueue.map((task) => {
-            const isActive = activeTask?.id === task.id
-            const relatedTasks = getRelatedTasks(task)
-            const isTaskExecuting = isExecuting && executingTaskId === task.id
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
+        >
+          <SortableContext
+            items={filteredQueue.map((task) => task.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div>
+              {filteredQueue.map((task) => {
+                const isActive = activeTask?.id === task.id
+                const relatedTasks = getRelatedTasks(task)
+                const isTaskExecuting = isExecuting && executingTaskId === task.id
+                const project = task.categoryId ? getProject(task.categoryId) : undefined
 
-            return (
-              <TaskRow
-                key={task.id}
-                task={task}
-                isActive={isActive}
-                isExpanded={expandedTaskId === task.id}
-                relatedTasks={relatedTasks}
-                isExecuting={isTaskExecuting}
-                onToggleComplete={() => handleToggleComplete(task.id, task.status)}
-                onStart={() => handleSmartStart(task.id)}
-                onExpand={() => handleExpandTask(task.id)}
-              />
-            )
-          })}
-        </div>
+                return (
+                  <SortableTaskRow
+                    key={task.id}
+                    task={task}
+                    isActive={isActive}
+                    isExpanded={expandedTaskId === task.id}
+                    relatedTasks={relatedTasks}
+                    isExecuting={isTaskExecuting}
+                    projectColor={project?.color}
+                    projectName={project?.name}
+                    onToggleComplete={() => handleToggleComplete(task.id, task.status)}
+                    onStart={() => handleOpenExecutionModal(task)}
+                    onExpand={() => handleExpandTask(task.id)}
+                    onDelete={() => deleteTask(task.id)}
+                  />
+                )
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
+
+      {/* Execution Modal */}
+      <TaskExecutionModal
+        isOpen={isModalOpen}
+        task={modalTask}
+        isGeneratingPrompt={isGeneratingPrompt}
+        generatedPrompt={generatedPrompt}
+        projectPath={projectPath}
+        onClose={handleCloseModal}
+        onExecute={handleExecute}
+        onRegeneratePrompt={handleRegeneratePrompt}
+      />
     </div>
   )
 }

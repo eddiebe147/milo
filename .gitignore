@@ -48,3 +48,4 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+test-results/

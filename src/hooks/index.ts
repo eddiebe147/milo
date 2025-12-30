@@ -1,3 +1,6 @@
 export { useVoiceInput } from './useVoiceInput'
 export type { UseVoiceInputOptions, UseVoiceInputReturn } from './useVoiceInput'
 export { useContinuity } from './useContinuity'
+export { useThemeColors } from './useThemeColors'
+export { useKeyboardNavigation } from './useKeyboardNavigation'
+export type { UseKeyboardNavigationOptions, UseKeyboardNavigationReturn } from './useKeyboardNavigation'

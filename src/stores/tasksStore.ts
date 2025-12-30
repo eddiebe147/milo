@@ -3,6 +3,7 @@ import type { Task } from '../types'
 
 // Import types from preload (available via window.milo)
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
 export interface TaskActionPlan {
   actionType: TaskActionType
@@ -14,7 +15,7 @@ export interface TaskActionPlan {
 
 export interface ExecutionResult {
   success: boolean
-  actionType: TaskActionType
+  actionType: TaskActionType | ExecutionTarget
   message: string
   error?: string
 }
@@ -50,7 +51,8 @@ interface TasksState {
   fetchAllTasks: () => Promise<void>
   fetchSignalQueue: () => Promise<void>
   refreshSignalQueue: () => Promise<void> // Auto-refill after completion
-  setSignalQueueSize: (size: number) => void
+  setSignalQueueSize: (size: number) => Promise<void>
+  reorderSignalQueue: (taskIds: string[]) => Promise<void>
 
   // Actions - Continuity
   fetchContinuityTasks: () => Promise<void>
@@ -303,12 +305,38 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     }
   },
 
-  setSignalQueueSize: (size: number) => {
+  setSignalQueueSize: async (size: number) => {
     // Clamp to valid range (3-5)
     const validSize = Math.max(3, Math.min(5, size))
     set({ signalQueueSize: validSize })
-    // Refresh queue with new size
-    get().refreshSignalQueue()
+    // Fetch new queue with new size directly (bypasses refillMode logic)
+    try {
+      const signalQueue = await window.milo.tasks.getSignalQueue(validSize)
+      const signalQueueIds = signalQueue.map((t) => t.id)
+      const backlog = await window.milo.tasks.getBacklog(signalQueueIds)
+      set({ signalQueue, backlog })
+    } catch (error) {
+      set({ error: (error as Error).message })
+    }
+  },
+
+  reorderSignalQueue: async (taskIds: string[]) => {
+    // Store original order for rollback
+    const originalQueue = get().signalQueue
+
+    // Optimistic update for instant UI feedback
+    const reorderedQueue = taskIds
+      .map(id => originalQueue.find(t => t.id === id))
+      .filter((t): t is Task => t !== undefined)
+    set({ signalQueue: reorderedQueue })
+
+    try {
+      // Persist to database
+      await window.milo.tasks.reorderSignalQueue(taskIds)
+    } catch (error) {
+      // Rollback on failure
+      set({ signalQueue: originalQueue, error: (error as Error).message })
+    }
   },
 
   // ============================

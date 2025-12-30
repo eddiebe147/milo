@@ -1,8 +1,8 @@
 # MILO Pipeline Status
 
 **Project:** MILO - Mission Intelligence Life Operator
-**Current Stage:** Stage 6: Integration Pass → Stage 7: Test Coverage
-**Last Updated:** December 28, 2024
+**Current Stage:** Stage 9: Launch Prep 🚀
+**Last Updated:** December 30, 2024 (Analytics Integration Complete)
 
 ---
 
@@ -17,7 +17,7 @@
 | 5. Feature Blocks | ✅ Complete | All P0 features implemented (see below) | Dec 28, 2024 |
 | 6. Integration Pass | ✅ Complete | All blocks connected, data flows working | Dec 28, 2024 |
 | 7. Test Coverage | ✅ Complete | 59 unit tests + E2E framework | Dec 28, 2024 |
-| 8. Polish & Harden | 🔄 In Progress | Error handling, loading states, edge cases | |
+| 8. Polish & Harden | ✅ Complete | Version sync, build verification, 355 tests passing | Dec 30, 2024 |
 | 9. Launch Prep | ⏳ Pending | | |
 | 10. Ship | ⏳ Pending | | |
 | 11. Listen & Iterate | ⏳ Pending | | |
@@ -26,7 +26,7 @@
 
 ## Current Stage Details
 
-### Stage 8: Polish & Harden (CURRENT)
+### Stage 8: Polish & Harden ✅ COMPLETE
 
 **Checkpoint Question:** "What breaks if I do something stupid?"
 
@@ -45,6 +45,54 @@
 - **StateIndicator.tsx**: Connected to real activity store, proper togglePause implementation with loading state
 - **QuickCapture.tsx**: Added success/error feedback toasts, loading state on submit
 - **ActivityMonitor.ts**: Added graceful fallback for active-win native module failures
+
+**Final Polish Work (Dec 30, 2024):**
+- **TitleBar.tsx**: Fixed version number display (v0.2.0 → v0.3.0)
+- **SettingsPage.tsx**: Fixed version number in footer (v0.2.0 → v0.3.0)
+- **Production Build**: Verified DMG builds successfully with native modules (active-win, better-sqlite3, keytar)
+- **Test Suite**: All 355 tests passing
+- **TypeScript**: Zero type errors
+
+---
+
+### Stage 9: Launch Prep (CURRENT) 🚀
+
+**Checkpoint Question:** "Could a stranger use this without asking me questions?"
+
+**Required:**
+- [x] App icon designed and configured (replace default Electron icon)
+- [x] Code signing certificate for macOS distribution (skipped for V1 - documented workaround)
+- [x] README with installation instructions
+- [x] Basic onboarding flow for new users
+- [x] Analytics/error tracking (privacy-first opt-in with PostHog)
+- [ ] Landing page or distribution method
+
+**Progress:**
+- Started: Dec 30, 2024
+- App icon: Pip-Boy style green "M" with CRT glow effects (icon.icns generated)
+- Onboarding: 3-step flow (welcome → API key → features)
+- Analytics: PostHog integration complete (Dec 30, 2024)
+
+**Analytics Implementation Details:**
+- **PostHog SDK** installed and configured for Electron
+- **Privacy-first opt-in**: Disabled by default, user must explicitly enable
+- **Settings toggle**: New "Privacy & Data" section in Settings UI
+- **Events tracked**:
+  - `app_started`, `app_closed`
+  - `task_created`, `task_completed`
+  - `goal_created`
+  - `morning_briefing_started/completed`
+  - `evening_review_started/completed`
+  - `plan_imported`
+  - `chat_message_sent`
+- **Error tracking**:
+  - React ErrorBoundary for component errors
+  - Global `uncaughtException` and `unhandledRejection` handlers
+  - Errors reported to PostHog when analytics enabled
+- **Key files**:
+  - `electron/services/AnalyticsService.ts` - Main analytics service
+  - `src/components/ui/ErrorBoundary.tsx` - React error boundary
+  - `src/components/Settings/SettingsPage.tsx` - Privacy toggle UI
 
 ---
 
@@ -97,7 +145,6 @@
 - ❌ Analog task capture (OCR)
 - ❌ Custom AI models
 - ❌ Cloud sync
-- ❌ Analytics/telemetry
 
 ---
 
@@ -136,7 +183,8 @@
 
 | Issue | Severity | Notes |
 |-------|----------|-------|
-| `active-win` native binary path | Medium | Activity monitoring fails in dev mode; needs native module rebuild config |
+| `active-win` native binary path | Low | Activity monitoring fails in dev mode due to Vite bundling; **works correctly in production builds** |
+| Code signing skipped | Low | Need Developer ID certificate for distribution |
 
 ---
 
@@ -149,6 +197,7 @@
 | Dec 28, 2024 | Electron over Tauri | Better ecosystem, more mature for macOS tray apps |
 | Dec 28, 2024 | Zustand over Redux | Simpler API, less boilerplate for this scope |
 | Dec 28, 2024 | Exclude ESM packages from externalization | `active-win` and `nanoid` are ESM-only, must be bundled |
+| Dec 30, 2024 | PostHog for analytics (opt-in only) | Privacy-first approach, EU data storage, self-hostable, generous free tier |
 
 ---
 

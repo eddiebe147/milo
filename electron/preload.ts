@@ -9,7 +9,7 @@ import type {
   ProcessedPlan,
 } from './ai/ClaudeClient'
 import type { NudgeEvent } from './services/NudgeManager'
-import type { TaskActionPlan, ExecutionResult } from './services/TaskExecutor'
+import type { TaskActionPlan, ExecutionResult, ExecutionTarget } from './services/TaskExecutor'
 
 // Nudge configuration type (matches NudgeManager)
 interface NudgeConfig {
@@ -82,6 +82,7 @@ export interface MiloAPI {
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
     recordWork: (id: string) => Promise<Task | null>
+    reorderSignalQueue: (taskIds: string[]) => Promise<void>
   }
   categories: {
     getAll: () => Promise<Category[]>
@@ -147,6 +148,8 @@ export interface MiloAPI {
   taskExecution: {
     classifyTask: (taskId: string) => Promise<TaskActionPlan>
     executeTask: (taskId: string) => Promise<ExecutionResult>
+    executeWithTarget: (target: ExecutionTarget, prompt: string, projectPath: string | null) => Promise<ExecutionResult>
+    generatePrompt: (taskId: string) => Promise<{ prompt: string; projectPath: string | null }>
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
   }
@@ -166,13 +169,59 @@ export interface MiloAPI {
       alwaysOnTop: boolean
       startMinimized: boolean
       showInDock: boolean
+      analyticsEnabled: boolean
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
+    getThemeColors: () => Promise<ThemeColors>
+    setThemeColor: (key: keyof ThemeColors, value: string) => Promise<boolean>
+    setThemeColors: (colors: Partial<ThemeColors>) => Promise<boolean>
   }
+  analytics: {
+    isEnabled: () => Promise<boolean>
+    isAvailable: () => Promise<boolean>
+    enable: () => Promise<boolean>
+    disable: () => Promise<boolean>
+  }
+  chat: {
+    getAllConversations: () => Promise<ChatConversation[]>
+    getConversation: (id: string) => Promise<ChatConversation | null>
+    createConversation: (title?: string) => Promise<ChatConversation>
+    updateConversationTitle: (id: string, title: string) => Promise<boolean>
+    deleteConversation: (id: string) => Promise<boolean>
+    autoTitleConversation: (id: string) => Promise<ChatConversation | null>
+    getMessages: (conversationId: string) => Promise<ChatMessageDB[]>
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => Promise<ChatMessageDB>
+    deleteMessage: (id: string) => Promise<boolean>
+  }
+}
+
+// Chat types (from repository)
+interface ChatConversation {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface ChatMessageDB {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+// Theme colors type (from settings repository)
+interface ThemeColors {
+  themePrimaryColor: string
+  themeAccentColor: string
+  themeDangerColor: string
+  themeUserMessageColor: string
+  themeAiMessageColor: string
 }
 
 // Expose the API to the renderer
@@ -238,6 +287,7 @@ contextBridge.exposeInMainWorld('milo', {
     getBacklog: (signalQueueIds: string[]) => ipcRenderer.invoke('tasks:getBacklog', signalQueueIds),
     getWorkedYesterday: () => ipcRenderer.invoke('tasks:getWorkedYesterday'),
     recordWork: (id: string) => ipcRenderer.invoke('tasks:recordWork', id),
+    reorderSignalQueue: (taskIds: string[]) => ipcRenderer.invoke('tasks:reorderSignalQueue', taskIds),
   },
 
   // Categories CRUD
@@ -319,6 +369,9 @@ contextBridge.exposeInMainWorld('milo', {
   taskExecution: {
     classifyTask: (taskId: string) => ipcRenderer.invoke('taskExecution:classifyTask', taskId),
     executeTask: (taskId: string) => ipcRenderer.invoke('taskExecution:executeTask', taskId),
+    executeWithTarget: (target: ExecutionTarget, prompt: string, projectPath: string | null) =>
+      ipcRenderer.invoke('taskExecution:executeWithTarget', target, prompt, projectPath),
+    generatePrompt: (taskId: string) => ipcRenderer.invoke('taskExecution:generatePrompt', taskId),
     getAvailableProjects: () => ipcRenderer.invoke('taskExecution:getAvailableProjects'),
     hasClaudeCli: () => ipcRenderer.invoke('taskExecution:hasClaudeCli'),
   },
@@ -331,5 +384,29 @@ contextBridge.exposeInMainWorld('milo', {
     getRefillMode: () => ipcRenderer.invoke('settings:getRefillMode'),
     saveRefillMode: (mode: 'endless' | 'daily_reset') => ipcRenderer.invoke('settings:saveRefillMode', mode),
     update: (updates: Record<string, unknown>) => ipcRenderer.invoke('settings:update', updates),
+    getThemeColors: () => ipcRenderer.invoke('settings:getThemeColors'),
+    setThemeColor: (key: keyof ThemeColors, value: string) => ipcRenderer.invoke('settings:setThemeColor', key, value),
+    setThemeColors: (colors: Partial<ThemeColors>) => ipcRenderer.invoke('settings:setThemeColors', colors),
+  },
+
+  // Analytics (privacy-first, opt-in)
+  analytics: {
+    isEnabled: () => ipcRenderer.invoke('analytics:isEnabled'),
+    isAvailable: () => ipcRenderer.invoke('analytics:isAvailable'),
+    enable: () => ipcRenderer.invoke('analytics:enable'),
+    disable: () => ipcRenderer.invoke('analytics:disable'),
+  },
+
+  // Chat conversations & messages
+  chat: {
+    getAllConversations: () => ipcRenderer.invoke('chat:getAllConversations'),
+    getConversation: (id: string) => ipcRenderer.invoke('chat:getConversation', id),
+    createConversation: (title?: string) => ipcRenderer.invoke('chat:createConversation', title),
+    updateConversationTitle: (id: string, title: string) => ipcRenderer.invoke('chat:updateConversationTitle', id, title),
+    deleteConversation: (id: string) => ipcRenderer.invoke('chat:deleteConversation', id),
+    autoTitleConversation: (id: string) => ipcRenderer.invoke('chat:autoTitleConversation', id),
+    getMessages: (conversationId: string) => ipcRenderer.invoke('chat:getMessages', conversationId),
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => ipcRenderer.invoke('chat:addMessage', conversationId, role, content),
+    deleteMessage: (id: string) => ipcRenderer.invoke('chat:deleteMessage', id),
   },
 } satisfies MiloAPI)

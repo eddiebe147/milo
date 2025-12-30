@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Play, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Play, Plus, X, Trash2 } from 'lucide-react'
 import { useTasksStore } from '@/stores'
 import type { Project } from '@/stores'
 import type { Task } from '@/types'
@@ -10,6 +10,7 @@ interface ProjectCardProps {
   isExpanded?: boolean
   onToggleExpand?: () => void
   onAddTask?: (projectId: string) => void
+  onDelete?: (projectId: string) => void
 }
 
 /**
@@ -36,9 +37,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   isExpanded = false,
   onToggleExpand,
   onAddTask,
+  onDelete,
 }) => {
   const { startTask } = useTasksStore()
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Calculate task stats
   const stats = useMemo(() => {
@@ -123,6 +126,46 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             >
               <Plus size={14} />
             </button>
+          )}
+
+          {/* Delete Project Button - +/X pattern */}
+          {onDelete && !showDeleteConfirm && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowDeleteConfirm(true)
+              }}
+              className="
+                p-1 rounded-sm
+                text-pipboy-green-dim hover:text-red-400
+                hover:bg-red-500/10 transition-colors
+              "
+              title={`Delete ${project.name}`}
+              aria-label={`Delete ${project.name}`}
+            >
+              <Plus size={14} className="rotate-45" />
+            </button>
+          )}
+
+          {/* Delete Confirmation */}
+          {showDeleteConfirm && (
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => {
+                  onDelete?.(project.id)
+                  setShowDeleteConfirm(false)
+                }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] bg-red-500/20 text-red-400 border border-red-500/50 rounded-sm hover:bg-red-500/30 transition-colors"
+              >
+                <Trash2 size={10} />
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="p-0.5 text-pipboy-green-dim hover:text-pipboy-green transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
           )}
         </div>
       </button>

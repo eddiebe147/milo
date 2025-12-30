@@ -125,6 +125,7 @@ export interface NudgeEvent {
 
 // Task execution types (mirrors electron/services/TaskExecutor.ts)
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
 export interface TaskActionPlan {
   actionType: TaskActionType
@@ -136,9 +137,34 @@ export interface TaskActionPlan {
 
 export interface ExecutionResult {
   success: boolean
-  actionType: TaskActionType
+  actionType: TaskActionType | ExecutionTarget
   message: string
   error?: string
+}
+
+// Theme colors type (backend format)
+export interface BackendThemeColors {
+  themePrimaryColor: string
+  themeAccentColor: string
+  themeDangerColor: string
+  themeUserMessageColor: string
+  themeAiMessageColor: string
+}
+
+// Chat conversation types
+export interface ChatConversationDB {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChatMessageDB {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
 }
 
 export interface MiloAPI {
@@ -184,6 +210,7 @@ export interface MiloAPI {
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
     recordWork: (id: string) => Promise<Task | null>
+    reorderSignalQueue: (taskIds: string[]) => Promise<void>
   }
   categories: {
     getAll: () => Promise<Category[]>
@@ -251,6 +278,8 @@ export interface MiloAPI {
   taskExecution: {
     classifyTask: (taskId: string) => Promise<TaskActionPlan>
     executeTask: (taskId: string) => Promise<ExecutionResult>
+    executeWithTarget: (target: ExecutionTarget, prompt: string, projectPath: string | null) => Promise<ExecutionResult>
+    generatePrompt: (taskId: string) => Promise<{ prompt: string; projectPath: string | null }>
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
   }
@@ -270,12 +299,33 @@ export interface MiloAPI {
       alwaysOnTop: boolean
       startMinimized: boolean
       showInDock: boolean
+      analyticsEnabled: boolean
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
+    getThemeColors: () => Promise<BackendThemeColors>
+    setThemeColor: (key: keyof BackendThemeColors, value: string) => Promise<boolean>
+    setThemeColors: (colors: Partial<BackendThemeColors>) => Promise<boolean>
+  }
+  analytics: {
+    isEnabled: () => Promise<boolean>
+    isAvailable: () => Promise<boolean>
+    enable: () => Promise<boolean>
+    disable: () => Promise<boolean>
+  }
+  chat: {
+    getAllConversations: () => Promise<ChatConversationDB[]>
+    getConversation: (id: string) => Promise<ChatConversationDB | null>
+    createConversation: (title?: string) => Promise<ChatConversationDB>
+    updateConversationTitle: (id: string, title: string) => Promise<boolean>
+    deleteConversation: (id: string) => Promise<boolean>
+    autoTitleConversation: (id: string) => Promise<ChatConversationDB | null>
+    getMessages: (conversationId: string) => Promise<ChatMessageDB[]>
+    addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => Promise<ChatMessageDB>
+    deleteMessage: (id: string) => Promise<boolean>
   }
 }
 
