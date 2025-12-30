@@ -1,8 +1,8 @@
 # MILO Pipeline Status
 
 **Project:** MILO - Mission Intelligence Life Operator
-**Current Stage:** Stage 6: Integration Pass → Stage 7: Test Coverage
-**Last Updated:** December 28, 2024
+**Current Stage:** Stage 8: Polish & Harden ✅ → Stage 9: Launch Prep
+**Last Updated:** December 30, 2024
 
 ---
 
@@ -17,7 +17,7 @@
 | 5. Feature Blocks | ✅ Complete | All P0 features implemented (see below) | Dec 28, 2024 |
 | 6. Integration Pass | ✅ Complete | All blocks connected, data flows working | Dec 28, 2024 |
 | 7. Test Coverage | ✅ Complete | 59 unit tests + E2E framework | Dec 28, 2024 |
-| 8. Polish & Harden | 🔄 In Progress | Error handling, loading states, edge cases | |
+| 8. Polish & Harden | ✅ Complete | Version sync, build verification, 355 tests passing | Dec 30, 2024 |
 | 9. Launch Prep | ⏳ Pending | | |
 | 10. Ship | ⏳ Pending | | |
 | 11. Listen & Iterate | ⏳ Pending | | |
@@ -26,7 +26,7 @@
 
 ## Current Stage Details
 
-### Stage 8: Polish & Harden (CURRENT)
+### Stage 8: Polish & Harden ✅ COMPLETE
 
 **Checkpoint Question:** "What breaks if I do something stupid?"
 
@@ -45,6 +45,27 @@
 - **StateIndicator.tsx**: Connected to real activity store, proper togglePause implementation with loading state
 - **QuickCapture.tsx**: Added success/error feedback toasts, loading state on submit
 - **ActivityMonitor.ts**: Added graceful fallback for active-win native module failures
+
+**Final Polish Work (Dec 30, 2024):**
+- **TitleBar.tsx**: Fixed version number display (v0.2.0 → v0.3.0)
+- **SettingsPage.tsx**: Fixed version number in footer (v0.2.0 → v0.3.0)
+- **Production Build**: Verified DMG builds successfully with native modules (active-win, better-sqlite3, keytar)
+- **Test Suite**: All 355 tests passing
+- **TypeScript**: Zero type errors
+
+---
+
+### Stage 9: Launch Prep (NEXT)
+
+**Checkpoint Question:** "Could a stranger use this without asking me questions?"
+
+**Required:**
+- [ ] App icon designed and configured (replace default Electron icon)
+- [ ] Code signing certificate for macOS distribution
+- [ ] README with installation instructions
+- [ ] Basic onboarding flow for new users
+- [ ] Analytics/error tracking (optional for V1)
+- [ ] Landing page or distribution method
 
 ---
 
@@ -136,7 +157,9 @@
 
 | Issue | Severity | Notes |
 |-------|----------|-------|
-| `active-win` native binary path | Medium | Activity monitoring fails in dev mode; needs native module rebuild config |
+| `active-win` native binary path | Low | Activity monitoring fails in dev mode due to Vite bundling; **works correctly in production builds** |
+| Default Electron icon | Low | Need custom app icon for Stage 9 |
+| Code signing skipped | Low | Need Developer ID certificate for distribution |
 
 ---
 

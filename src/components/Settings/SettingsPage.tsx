@@ -495,7 +495,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
         {/* Version info at bottom */}
         <div className="pt-4 border-t border-pipboy-border/30 text-center">
           <p className="text-[10px] text-pipboy-green-dim/40">
-            MILO v0.2.0 • Made with 💚 by ID8Labs
+            MILO v0.3.0 • Made with 💚 by ID8Labs
           </p>
         </div>
       </div>
