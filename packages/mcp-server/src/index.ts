@@ -21,6 +21,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { getCategoryTools, handleCategoryTool } from './tools/categories.js';
 import { getTaskTools, handleTaskTool } from './tools/tasks.js';
+import { getGoalTools, handleGoalTool } from './tools/goals.js';
+import { getStatsTools, handleStatsTool } from './tools/stats.js';
 import { getResources, handleResourceRead } from './resources.js';
 
 /**
@@ -47,6 +49,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       ...getCategoryTools(),
       ...getTaskTools(),
+      ...getGoalTools(),
+      ...getStatsTools(),
     ],
   };
 });
@@ -64,6 +68,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name.startsWith('task_')) {
     return handleTaskTool(name, args);
+  }
+
+  if (name.startsWith('goal_')) {
+    return handleGoalTool(name, args);
+  }
+
+  if (name.startsWith('stats_')) {
+    return handleStatsTool(name, args);
   }
 
   throw new Error(`Unknown tool: ${name}`);

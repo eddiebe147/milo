@@ -41,3 +41,60 @@ export interface Category {
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
 }
+
+/**
+ * Goal timeframe values
+ * Hierarchical: yearly (beacon) → quarterly (milestone) → monthly (objective) → weekly (target)
+ */
+export type GoalTimeframe = 'yearly' | 'quarterly' | 'monthly' | 'weekly';
+
+/**
+ * Goal status values
+ */
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+/**
+ * Goal interface matching MILO's database schema
+ */
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  parentId?: string; // Links to parent goal for hierarchy
+  timeframe: GoalTimeframe;
+  status: GoalStatus;
+  targetDate?: string; // ISO 8601 date string
+  createdAt: string; // ISO 8601 timestamp
+  updatedAt: string; // ISO 8601 timestamp
+}
+
+/**
+ * Activity state values
+ * GREEN = productive, AMBER = neutral, RED = distracted
+ */
+export type ActivityState = 'GREEN' | 'AMBER' | 'RED';
+
+/**
+ * Activity log entry interface
+ */
+export interface ActivityLog {
+  id: string;
+  appName: string;
+  windowTitle: string;
+  state: ActivityState;
+  durationSeconds: number;
+  timestamp: string; // ISO 8601 timestamp
+}
+
+/**
+ * Daily stats interface
+ */
+export interface DailyStats {
+  date: string; // YYYY-MM-DD
+  greenMinutes: number;
+  amberMinutes: number;
+  redMinutes: number;
+  signalScore: number; // 0-100
+  tasksCompleted: number;
+  streak: number;
+}
