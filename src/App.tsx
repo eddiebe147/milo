@@ -7,6 +7,7 @@ import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
 import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
+import { Onboarding } from '@/components/Onboarding'
 import { useNudgeStore, useAIStore } from '@/stores'
 import { useThemeColors } from '@/hooks/useThemeColors'
 import { ModalProvider, useModal } from '@/contexts/ModalContext'
@@ -14,11 +15,21 @@ import { ModalProvider, useModal } from '@/contexts/ModalContext'
 type View = 'dashboard' | 'settings' | 'onboarding' | 'plan-import'
 
 /**
+ * Check if onboarding has been completed
+ */
+function hasCompletedOnboarding(): boolean {
+  return localStorage.getItem('milo-onboarding-complete') === 'true'
+}
+
+/**
  * AppContent - Main app component that uses modal context
  * Separated from App to allow ModalProvider to wrap it
  */
 function AppContent() {
-  const [currentView, setCurrentView] = useState<View>('dashboard')
+  // Check if this is first launch (onboarding not completed)
+  const [currentView, setCurrentView] = useState<View>(
+    hasCompletedOnboarding() ? 'dashboard' : 'onboarding'
+  )
 
   const { activeNudges, dismissNudge, snoozeApp, setupEventListener } = useNudgeStore()
   const { startMorningBriefing, startEveningReview } = useAIStore()
@@ -75,6 +86,9 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden">
+        {currentView === 'onboarding' && (
+          <Onboarding onComplete={() => setCurrentView('dashboard')} />
+        )}
         {currentView === 'dashboard' && (
           <DashboardV3 onOpenMenu={() => setCurrentView('settings')} />
         )}

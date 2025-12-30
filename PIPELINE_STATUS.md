@@ -63,13 +63,14 @@
 - [x] App icon designed and configured (replace default Electron icon)
 - [x] Code signing certificate for macOS distribution (skipped for V1 - documented workaround)
 - [x] README with installation instructions
-- [ ] Basic onboarding flow for new users
+- [x] Basic onboarding flow for new users
 - [ ] Analytics/error tracking (optional for V1)
 - [ ] Landing page or distribution method
 
 **Progress:**
 - Started: Dec 30, 2024
 - App icon: Pip-Boy style green "M" with CRT glow effects (icon.icns generated)
+- Onboarding: 3-step flow (welcome → API key → features)
 
 ---
 
