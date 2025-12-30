@@ -67,7 +67,7 @@ const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
       }`}
     >
       {/* Task row with drag handle on the far left */}
-      <div className="flex items-stretch">
+      <div className="flex items-stretch min-w-0 overflow-hidden">
         {/* Drag handle - narrow strip on left edge */}
         <div
           {...attributes}
@@ -78,7 +78,7 @@ const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
           tabIndex={0}
         />
         {/* Task content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <TaskRow {...props} />
         </div>
       </div>
@@ -312,7 +312,7 @@ export const SignalQueue: React.FC = () => {
   }
 
   return (
-    <div className="border border-pipboy-border rounded-sm bg-pipboy-bg">
+    <div className="border border-pipboy-border rounded-sm bg-pipboy-bg overflow-hidden">
       {/* Header with size slider */}
       <div className="p-3 border-b border-pipboy-border">
         <div className="flex items-center justify-between mb-2">
