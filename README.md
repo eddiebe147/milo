@@ -1,35 +1,42 @@
-# MILO - Life's Plan Mode
+# MILO - Mission Intelligence Life Operator
 
-A signal-based task management system designed for deep work and focused execution. MILO cuts through the noise of endless todo lists by surfacing only what matters right now.
+<p align="center">
+  <img src="resources/icon.iconset/icon_256x256.png" alt="MILO Icon" width="128" height="128">
+</p>
 
-## Philosophy
+**A Signal-to-Noise Life Planner** that cuts through daily noise and helps you focus on goal-aligned actions. MILO combines AI-powered planning with activity monitoring to keep you on track.
 
-Traditional task managers bury you in lists. MILO operates differently:
+## Quick Install (macOS)
 
-- **Signal Queue**: Your top 5 priorities, always visible. In-progress tasks first, then highest priority pending.
-- **Backlog**: Everything else, organized by project. Out of sight until you need it.
-- **Categories as Projects**: Group related work. Color-coded. Drag to reorder.
-- **Work Tracking**: Multi-day tasks track progress. Know how much effort you've invested.
+1. **Download** the latest `MILO-x.x.x.dmg` from [Releases](../../releases)
+2. **Open** the DMG and drag MILO to Applications
+3. **First launch**: Right-click the app → "Open" (required for unsigned apps)
+4. **Setup**: Enter your [Claude API key](https://console.anthropic.com/) in Settings
 
-## Features
+> **Note**: MILO is currently unsigned. macOS will warn about an "unidentified developer" on first launch. Right-click → Open bypasses this safely.
 
-### Task Management
-- Create tasks with priority levels (1-5, where 1 is highest)
-- Track estimated days vs actual days worked
-- Start, complete, or defer tasks to future dates
-- Signal queue surfaces what needs attention now
-- Backlog keeps everything else organized
+---
 
-### Project Organization
-- Categories act as projects or life areas
-- Custom colors for visual organization
-- Drag-and-drop reordering
-- Tasks automatically organized by category
+## What MILO Does
 
-### AI Integration
-- **Plan Import Agent**: Paste markdown plans, MILO parses them into structured tasks
-- **MCP Server**: Claude Code can manage your tasks via natural language
-- Deep integration with AI workflows for task capture and management
+MILO is your personal life operating system with a retro Pip-Boy aesthetic:
+
+### Core Features
+- **Goal Hierarchy**: Beacon → Milestone → Objective → Task (dream big, execute small)
+- **Morning Briefing**: AI-powered daily planning dialogue
+- **Activity Monitoring**: Tracks your focus state (GREEN/AMBER/RED)
+- **Drift Detection**: Gentle nudges when you veer off course
+- **Evening Review**: Reflect on your day, adjust tomorrow's plan
+- **S/N Scoring**: Gamified signal-to-noise ratio (0-100)
+
+### The Signal Queue
+Your top priorities, always visible. MILO surfaces what matters *right now* instead of burying you in endless lists.
+
+### AI-Powered Planning
+- Natural language task capture
+- Automatic priority assignment
+- Context-aware suggestions
+- MCP integration for Claude Code
 
 ### Claude Code Integration (MCP)
 
@@ -170,13 +177,34 @@ CREATE TABLE categories (
 );
 ```
 
+## Requirements
+
+- **macOS** 10.15+ (Catalina or later)
+- **Claude API key** from [Anthropic Console](https://console.anthropic.com/)
+- ~200MB disk space
+
 ## Roadmap
 
-- [ ] Time blocking integration
-- [ ] Goal tracking with task rollup
-- [ ] Calendar sync
+### V1.1 (Planned)
+- [ ] Notion integration (MCP)
+- [ ] Apple Calendar sync (MCP)
+- [ ] Apple Notes integration (MCP)
+
+### Future
+- [ ] Time blocking
 - [ ] Mobile companion app
-- [ ] Team collaboration features
+- [ ] Team collaboration
+
+## Troubleshooting
+
+**"MILO can't be opened because it is from an unidentified developer"**
+→ Right-click the app → Open → Click "Open" in the dialog
+
+**Activity monitoring not working**
+→ Grant accessibility permissions: System Preferences → Security & Privacy → Privacy → Accessibility → Add MILO
+
+**Claude API errors**
+→ Verify your API key in Settings → Check your Anthropic account has credits
 
 ## License
 

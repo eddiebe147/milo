@@ -61,8 +61,8 @@
 
 **Required:**
 - [x] App icon designed and configured (replace default Electron icon)
-- [ ] Code signing certificate for macOS distribution
-- [ ] README with installation instructions
+- [x] Code signing certificate for macOS distribution (skipped for V1 - documented workaround)
+- [x] README with installation instructions
 - [ ] Basic onboarding flow for new users
 - [ ] Analytics/error tracking (optional for V1)
 - [ ] Landing page or distribution method
