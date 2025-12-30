@@ -15,6 +15,8 @@ export interface StoredSettings {
   alwaysOnTop: boolean
   startMinimized: boolean
   showInDock: boolean
+  analyticsEnabled: boolean
+  analyticsId: string | null
 }
 
 export interface ThemeColors {
@@ -42,6 +44,8 @@ function rowToSettings(row: Record<string, unknown>): StoredSettings {
     alwaysOnTop: Boolean(row.always_on_top),
     startMinimized: Boolean(row.start_minimized),
     showInDock: Boolean(row.show_in_dock),
+    analyticsEnabled: Boolean(row.analytics_enabled),
+    analyticsId: row.analytics_id as string | null,
   }
 }
 
@@ -133,10 +137,31 @@ export const settingsRepository = {
       setClauses.push('show_in_dock = ?')
       values.push(updates.showInDock ? 1 : 0)
     }
+    if (updates.analyticsEnabled !== undefined) {
+      setClauses.push('analytics_enabled = ?')
+      values.push(updates.analyticsEnabled ? 1 : 0)
+    }
+    if (updates.analyticsId !== undefined) {
+      setClauses.push('analytics_id = ?')
+      values.push(updates.analyticsId)
+    }
 
     if (setClauses.length > 0) {
       db.prepare(`UPDATE user_settings SET ${setClauses.join(', ')} WHERE id = 1`).run(...values)
     }
+  },
+
+  // Get analytics enabled status
+  getAnalyticsEnabled(): boolean {
+    const db = getDatabase()
+    const row = db.prepare('SELECT analytics_enabled FROM user_settings WHERE id = 1').get() as Record<string, unknown>
+    return Boolean(row?.analytics_enabled)
+  },
+
+  // Set analytics enabled status
+  setAnalyticsEnabled(enabled: boolean): void {
+    const db = getDatabase()
+    db.prepare('UPDATE user_settings SET analytics_enabled = ? WHERE id = 1').run(enabled ? 1 : 0)
   },
 
   // Get all theme colors

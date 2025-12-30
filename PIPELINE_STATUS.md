@@ -2,7 +2,7 @@
 
 **Project:** MILO - Mission Intelligence Life Operator
 **Current Stage:** Stage 9: Launch Prep 🚀
-**Last Updated:** December 30, 2024
+**Last Updated:** December 30, 2024 (Analytics Integration Complete)
 
 ---
 
@@ -64,13 +64,35 @@
 - [x] Code signing certificate for macOS distribution (skipped for V1 - documented workaround)
 - [x] README with installation instructions
 - [x] Basic onboarding flow for new users
-- [ ] Analytics/error tracking (optional for V1)
+- [x] Analytics/error tracking (privacy-first opt-in with PostHog)
 - [ ] Landing page or distribution method
 
 **Progress:**
 - Started: Dec 30, 2024
 - App icon: Pip-Boy style green "M" with CRT glow effects (icon.icns generated)
 - Onboarding: 3-step flow (welcome → API key → features)
+- Analytics: PostHog integration complete (Dec 30, 2024)
+
+**Analytics Implementation Details:**
+- **PostHog SDK** installed and configured for Electron
+- **Privacy-first opt-in**: Disabled by default, user must explicitly enable
+- **Settings toggle**: New "Privacy & Data" section in Settings UI
+- **Events tracked**:
+  - `app_started`, `app_closed`
+  - `task_created`, `task_completed`
+  - `goal_created`
+  - `morning_briefing_started/completed`
+  - `evening_review_started/completed`
+  - `plan_imported`
+  - `chat_message_sent`
+- **Error tracking**:
+  - React ErrorBoundary for component errors
+  - Global `uncaughtException` and `unhandledRejection` handlers
+  - Errors reported to PostHog when analytics enabled
+- **Key files**:
+  - `electron/services/AnalyticsService.ts` - Main analytics service
+  - `src/components/ui/ErrorBoundary.tsx` - React error boundary
+  - `src/components/Settings/SettingsPage.tsx` - Privacy toggle UI
 
 ---
 
@@ -123,7 +145,6 @@
 - ❌ Analog task capture (OCR)
 - ❌ Custom AI models
 - ❌ Cloud sync
-- ❌ Analytics/telemetry
 
 ---
 
@@ -176,6 +197,7 @@
 | Dec 28, 2024 | Electron over Tauri | Better ecosystem, more mature for macOS tray apps |
 | Dec 28, 2024 | Zustand over Redux | Simpler API, less boilerplate for this scope |
 | Dec 28, 2024 | Exclude ESM packages from externalization | `active-win` and `nanoid` are ESM-only, must be bundled |
+| Dec 30, 2024 | PostHog for analytics (opt-in only) | Privacy-first approach, EU data storage, self-hostable, generous free tier |
 
 ---
 

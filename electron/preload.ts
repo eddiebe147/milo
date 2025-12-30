@@ -169,6 +169,7 @@ export interface MiloAPI {
       alwaysOnTop: boolean
       startMinimized: boolean
       showInDock: boolean
+      analyticsEnabled: boolean
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
@@ -178,6 +179,12 @@ export interface MiloAPI {
     getThemeColors: () => Promise<ThemeColors>
     setThemeColor: (key: keyof ThemeColors, value: string) => Promise<boolean>
     setThemeColors: (colors: Partial<ThemeColors>) => Promise<boolean>
+  }
+  analytics: {
+    isEnabled: () => Promise<boolean>
+    isAvailable: () => Promise<boolean>
+    enable: () => Promise<boolean>
+    disable: () => Promise<boolean>
   }
   chat: {
     getAllConversations: () => Promise<ChatConversation[]>
@@ -380,6 +387,14 @@ contextBridge.exposeInMainWorld('milo', {
     getThemeColors: () => ipcRenderer.invoke('settings:getThemeColors'),
     setThemeColor: (key: keyof ThemeColors, value: string) => ipcRenderer.invoke('settings:setThemeColor', key, value),
     setThemeColors: (colors: Partial<ThemeColors>) => ipcRenderer.invoke('settings:setThemeColors', colors),
+  },
+
+  // Analytics (privacy-first, opt-in)
+  analytics: {
+    isEnabled: () => ipcRenderer.invoke('analytics:isEnabled'),
+    isAvailable: () => ipcRenderer.invoke('analytics:isAvailable'),
+    enable: () => ipcRenderer.invoke('analytics:enable'),
+    disable: () => ipcRenderer.invoke('analytics:disable'),
   },
 
   // Chat conversations & messages

@@ -1,12 +1,30 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { initDatabase, closeDatabase, activityMonitor, detectState, scoringEngine, nudgeManager } from './services'
-import { goalsRepository, tasksRepository, categoriesRepository, activityRepository, scoresRepository, classificationsRepository, settingsRepository, chatRepository } from './repositories'
+import {
+  initDatabase,
+  closeDatabase,
+  activityMonitor,
+  detectState,
+  scoringEngine,
+  nudgeManager,
+} from './services'
+import * as analytics from './services/analytics'
+import {
+  goalsRepository,
+  tasksRepository,
+  categoriesRepository,
+  activityRepository,
+  scoresRepository,
+  classificationsRepository,
+  settingsRepository,
+  chatRepository,
+} from './repositories'
 import { claudeClient } from './ai/ClaudeClient'
 import type { Goal, Task } from '../src/types'
 import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
-import { taskExecutor } from './services/TaskExecutor'
+import { taskExecutor, type ExecutionTarget } from './services/TaskExecutor'
+import type { ThemeColors } from './repositories/settings'
 
 // Window references
 let mainWindow: BrowserWindow | null = null
@@ -151,9 +169,13 @@ function setupIPC(): void {
   ipcMain.handle('goals:getAll', () => goalsRepository.getAll())
   ipcMain.handle('goals:getById', (_, id: string) => goalsRepository.getById(id))
   ipcMain.handle('goals:getHierarchy', () => goalsRepository.getHierarchy())
-  ipcMain.handle('goals:create', (_, goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) =>
-    goalsRepository.create(goal)
-  )
+  ipcMain.handle('goals:create', (_, goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const created = goalsRepository.create(goal)
+    if (created) {
+      analytics.trackEvent('goal_created')
+    }
+    return created
+  })
   ipcMain.handle('goals:update', (_, id: string, updates: Partial<Goal>) =>
     goalsRepository.update(id, updates)
   )
@@ -164,15 +186,25 @@ function setupIPC(): void {
   ipcMain.handle('tasks:getToday', () => tasksRepository.getToday())
   ipcMain.handle('tasks:getById', (_, id: string) => tasksRepository.getById(id))
   ipcMain.handle('tasks:getActive', () => tasksRepository.getActive())
-  ipcMain.handle('tasks:create', (_, task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) =>
-    tasksRepository.create(task)
-  )
+  ipcMain.handle('tasks:create', async (_, task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const created = await tasksRepository.create(task)
+    if (created) {
+      analytics.trackEvent('task_created')
+    }
+    return created
+  })
   ipcMain.handle('tasks:update', (_, id: string, updates: Partial<Task>) =>
     tasksRepository.update(id, updates)
   )
   ipcMain.handle('tasks:delete', (_, id: string) => tasksRepository.delete(id))
   ipcMain.handle('tasks:start', (_, id: string) => tasksRepository.start(id))
-  ipcMain.handle('tasks:complete', (_, id: string) => tasksRepository.complete(id))
+  ipcMain.handle('tasks:complete', async (_, id: string) => {
+    const completed = await tasksRepository.complete(id)
+    if (completed) {
+      analytics.trackEvent('task_completed')
+    }
+    return completed
+  })
   ipcMain.handle('tasks:defer', (_, id: string) => tasksRepository.defer(id))
 
   // New task methods for signal queue & continuity
@@ -227,18 +259,26 @@ function setupIPC(): void {
 
   ipcMain.handle('ai:morningBriefing', async (_, input: MorningBriefingInput) => {
     try {
-      return await claudeClient.generateMorningBriefing(input)
+      analytics.trackEvent('morning_briefing_started')
+      const result = await claudeClient.generateMorningBriefing(input)
+      analytics.trackEvent('morning_briefing_completed')
+      return result
     } catch (error) {
       console.error('[IPC] Morning briefing error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'morning_briefing' })
       throw error
     }
   })
 
   ipcMain.handle('ai:eveningReview', async (_, input: EveningReviewInput) => {
     try {
-      return await claudeClient.generateEveningReview(input)
+      analytics.trackEvent('evening_review_started')
+      const result = await claudeClient.generateEveningReview(input)
+      analytics.trackEvent('evening_review_completed')
+      return result
     } catch (error) {
       console.error('[IPC] Evening review error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'evening_review' })
       throw error
     }
   })
@@ -433,6 +473,11 @@ function setupIPC(): void {
         createdTaskIds.push(task.id)
       }
 
+      analytics.trackEvent('plan_imported', {
+        goalsCreated: createdGoalIds.length,
+        tasksCreated: createdTaskIds.length,
+      })
+
       return {
         success: true,
         goalsCreated: createdGoalIds.length,
@@ -442,6 +487,7 @@ function setupIPC(): void {
       }
     } catch (error) {
       console.error('[IPC] Plan apply error:', error)
+      analytics.trackError('error_api', error as Error, { operation: 'plan_apply' })
       throw error
     }
   })
@@ -473,12 +519,24 @@ function setupIPC(): void {
     return true
   })
   ipcMain.handle('settings:getThemeColors', () => settingsRepository.getThemeColors())
-  ipcMain.handle('settings:setThemeColor', (_, key: string, value: string) => {
-    settingsRepository.setThemeColor(key as any, value)
+  ipcMain.handle('settings:setThemeColor', (_, key: keyof ThemeColors, value: string) => {
+    settingsRepository.setThemeColor(key, value)
     return true
   })
   ipcMain.handle('settings:setThemeColors', (_, colors) => {
     settingsRepository.setThemeColors(colors)
+    return true
+  })
+
+  // Analytics management
+  ipcMain.handle('analytics:isEnabled', () => analytics.isAnalyticsEnabled())
+  ipcMain.handle('analytics:isAvailable', () => analytics.isAnalyticsAvailable())
+  ipcMain.handle('analytics:enable', () => {
+    analytics.enableAnalytics()
+    return true
+  })
+  ipcMain.handle('analytics:disable', () => {
+    analytics.disableAnalytics()
     return true
   })
 
@@ -525,9 +583,9 @@ function setupIPC(): void {
   })
 
   // New modal-based execution methods
-  ipcMain.handle('taskExecution:executeWithTarget', async (_, target: string, prompt: string, projectPath: string | null) => {
+  ipcMain.handle('taskExecution:executeWithTarget', async (_, target: ExecutionTarget, prompt: string, projectPath: string | null) => {
     try {
-      return await taskExecutor.executeWithTarget(target as any, prompt, projectPath)
+      return await taskExecutor.executeWithTarget(target, prompt, projectPath)
     } catch (error) {
       console.error('[IPC] Execute with target error:', error)
       throw error
@@ -576,7 +634,11 @@ function setupIPC(): void {
   // Messages
   ipcMain.handle('chat:getMessages', (_, conversationId: string) => chatRepository.getMessages(conversationId))
   ipcMain.handle('chat:addMessage', (_, conversationId: string, role: 'user' | 'assistant', content: string) => {
-    return chatRepository.addMessage(conversationId, role, content)
+    const message = chatRepository.addMessage(conversationId, role, content)
+    if (role === 'user') {
+      analytics.trackEvent('chat_message_sent')
+    }
+    return message
   })
   ipcMain.handle('chat:deleteMessage', (_, id: string) => {
     chatRepository.deleteMessage(id)
@@ -644,6 +706,10 @@ app.whenReady().then(() => {
   // Initialize activity monitoring after window is created
   initActivityMonitoring()
 
+  // Initialize analytics (respects user opt-in preference)
+  analytics.initAnalytics()
+  analytics.trackEvent('app_opened')
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -661,7 +727,13 @@ app.on('window-all-closed', () => {
 })
 
 // Cleanup
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  // Track app closed before shutting down analytics
+  analytics.trackEvent('app_closed')
+
+  // Shutdown analytics (flushes pending events)
+  await analytics.shutdownAnalytics()
+
   // Stop activity monitoring
   activityMonitor.stop()
 
@@ -670,4 +742,16 @@ app.on('before-quit', () => {
 
   // Cleanup tray
   tray?.destroy()
+})
+
+// Global error handlers for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('[Main] Uncaught exception:', error)
+  analytics.trackError('error_uncaught', error, { type: 'uncaughtException' })
+})
+
+process.on('unhandledRejection', (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason))
+  console.error('[Main] Unhandled rejection:', error)
+  analytics.trackError('error_uncaught', error, { type: 'unhandledRejection' })
 })

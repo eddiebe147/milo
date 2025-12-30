@@ -5,6 +5,7 @@ import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
 import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
 import { Onboarding } from '@/components/Onboarding'
@@ -138,13 +139,15 @@ function AppContent() {
 }
 
 /**
- * App - Root component with ModalProvider
+ * App - Root component with ErrorBoundary and ModalProvider
  */
 function App() {
   return (
-    <ModalProvider>
-      <AppContent />
-    </ModalProvider>
+    <ErrorBoundary>
+      <ModalProvider>
+        <AppContent />
+      </ModalProvider>
+    </ErrorBoundary>
   )
 }
 
