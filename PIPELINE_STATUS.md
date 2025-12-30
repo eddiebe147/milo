@@ -60,7 +60,7 @@
 **Checkpoint Question:** "Could a stranger use this without asking me questions?"
 
 **Required:**
-- [ ] App icon designed and configured (replace default Electron icon)
+- [x] App icon designed and configured (replace default Electron icon)
 - [ ] Code signing certificate for macOS distribution
 - [ ] README with installation instructions
 - [ ] Basic onboarding flow for new users
@@ -69,6 +69,7 @@
 
 **Progress:**
 - Started: Dec 30, 2024
+- App icon: Pip-Boy style green "M" with CRT glow effects (icon.icns generated)
 
 ---
 
@@ -161,7 +162,6 @@
 | Issue | Severity | Notes |
 |-------|----------|-------|
 | `active-win` native binary path | Low | Activity monitoring fails in dev mode due to Vite bundling; **works correctly in production builds** |
-| Default Electron icon | Low | Need custom app icon for Stage 9 |
 | Code signing skipped | Low | Need Developer ID certificate for distribution |
 
 ---
