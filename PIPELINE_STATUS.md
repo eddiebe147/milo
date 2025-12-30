@@ -18,7 +18,7 @@
 | 6. Integration Pass | ✅ Complete | All blocks connected, data flows working | Dec 28, 2024 |
 | 7. Test Coverage | ✅ Complete | 59 unit tests + E2E framework | Dec 28, 2024 |
 | 8. Polish & Harden | ✅ Complete | Version sync, build verification, 355 tests passing | Dec 30, 2024 |
-| 9. Launch Prep | ⏳ Pending | | |
+| 9. Launch Prep | ✅ Complete | GitHub Release v0.3.0 published with DMG | Dec 30, 2024 |
 | 10. Ship | ⏳ Pending | | |
 | 11. Listen & Iterate | ⏳ Pending | | |
 
@@ -65,13 +65,16 @@
 - [x] README with installation instructions
 - [x] Basic onboarding flow for new users
 - [x] Analytics/error tracking (privacy-first opt-in with PostHog)
-- [ ] Landing page or distribution method
+- [x] Distribution method (GitHub Releases)
 
 **Progress:**
 - Started: Dec 30, 2024
 - App icon: Pip-Boy style green "M" with CRT glow effects (icon.icns generated)
 - Onboarding: 3-step flow (welcome → API key → features)
 - Analytics: PostHog integration complete (Dec 30, 2024)
+- Distribution: GitHub Release v0.3.0 published (Dec 30, 2024)
+
+**✅ STAGE 9 COMPLETE** - Ready for Stage 10: Ship
 
 **Analytics Implementation Details:**
 - **PostHog SDK** installed and configured for Electron
