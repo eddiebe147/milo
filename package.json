@@ -1,6 +1,6 @@
 {
   "name": "milo",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MILO - Mission Intelligence Life Operator: A Signal-to-Noise Life Planner",
   "main": "./out/main/index.js",
   "type": "module",
@@ -42,6 +42,8 @@
     "keytar": "^7.9.0",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.0.9",
+    "posthog-js": "^1.311.0",
+    "posthog-node": "^5.18.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.14.1",

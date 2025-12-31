@@ -117,7 +117,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             onMouseLeave={() => setIsHovering(false)}
         >
             {/* Main row */}
-            <div className="p-3 flex items-center gap-3">
+            <div className="p-3 flex items-center gap-3 min-w-0">
                 {/* Completion circle */}
                 <button
                     onClick={handleToggleComplete}
@@ -161,11 +161,12 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                 {/* Task title */}
                 <span
                     className={cn(
-                        'flex-1 text-sm truncate transition-all duration-200',
+                        'flex-1 min-w-0 text-sm truncate transition-all duration-200',
                         isCompleted
                             ? 'line-through text-pipboy-green-dim'
                             : 'text-pipboy-green'
                     )}
+                    title={task.title}
                 >
                     {task.title}
                 </span>

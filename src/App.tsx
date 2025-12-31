@@ -5,10 +5,11 @@ import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
 import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
 import { Onboarding } from '@/components/Onboarding'
-import { useNudgeStore, useAIStore } from '@/stores'
+import { useNudgeStore, useAIStore, useTasksStore } from '@/stores'
 import { useThemeColors } from '@/hooks/useThemeColors'
 import { ModalProvider, useModal } from '@/contexts/ModalContext'
 
@@ -33,6 +34,7 @@ function AppContent() {
 
   const { activeNudges, dismissNudge, snoozeApp, setupEventListener } = useNudgeStore()
   const { startMorningBriefing, startEveningReview } = useAIStore()
+  const { setupTasksChangedListener } = useTasksStore()
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette()
   const { isOpen, openModalWithType, closeModal } = useModal()
 
@@ -44,6 +46,12 @@ function AppContent() {
     const cleanup = setupEventListener()
     return cleanup
   }, [setupEventListener])
+
+  // Set up tasks changed event listener (for chat tool calls)
+  useEffect(() => {
+    const cleanup = setupTasksChangedListener()
+    return cleanup
+  }, [setupTasksChangedListener])
 
   // Listen for navigation events from main process
   useEffect(() => {
@@ -138,13 +146,15 @@ function AppContent() {
 }
 
 /**
- * App - Root component with ModalProvider
+ * App - Root component with ErrorBoundary and ModalProvider
  */
 function App() {
   return (
-    <ModalProvider>
-      <AppContent />
-    </ModalProvider>
+    <ErrorBoundary>
+      <ModalProvider>
+        <AppContent />
+      </ModalProvider>
+    </ErrorBoundary>
   )
 }
 

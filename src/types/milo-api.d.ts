@@ -183,6 +183,7 @@ export interface MiloAPI {
     onToggleMonitoring: (callback: (paused: boolean) => void) => () => void
     onActivityStateChanged: (callback: (payload: { appName: string; windowTitle: string; state: ActivityState; stateChanged: boolean }) => void) => () => void
     onNudgeTriggered: (callback: (nudge: NudgeEvent) => void) => () => void
+    onTasksChanged: (callback: () => void) => () => void
   }
   goals: {
     getAll: () => Promise<Goal[]>
@@ -299,6 +300,7 @@ export interface MiloAPI {
       alwaysOnTop: boolean
       startMinimized: boolean
       showInDock: boolean
+      analyticsEnabled: boolean
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
@@ -308,6 +310,12 @@ export interface MiloAPI {
     getThemeColors: () => Promise<BackendThemeColors>
     setThemeColor: (key: keyof BackendThemeColors, value: string) => Promise<boolean>
     setThemeColors: (colors: Partial<BackendThemeColors>) => Promise<boolean>
+  }
+  analytics: {
+    isEnabled: () => Promise<boolean>
+    isAvailable: () => Promise<boolean>
+    enable: () => Promise<boolean>
+    disable: () => Promise<boolean>
   }
   chat: {
     getAllConversations: () => Promise<ChatConversationDB[]>

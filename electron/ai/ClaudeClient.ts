@@ -641,9 +641,10 @@ After using a tool, confirm the action to the user.`
 
     if (context.todayTasks && context.todayTasks.length > 0) {
       contextStr += `### Today's Tasks\n`
+      contextStr += `(Use the ID in brackets when calling task tools)\n`
       context.todayTasks.forEach((t) => {
         const status = t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '→' : '○'
-        contextStr += `${status} ${t.title}${t.priority >= 4 ? ' [SIGNAL]' : ''}\n`
+        contextStr += `${status} [${t.id}] ${t.title}${t.priority >= 4 ? ' [SIGNAL]' : ''}\n`
       })
       contextStr += '\n'
     }

@@ -14,6 +14,7 @@ import {
   RotateCcw,
   RefreshCw,
   Pause,
+  Shield,
 } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useModal } from '@/contexts/ModalContext'
@@ -25,6 +26,82 @@ interface SettingsPageProps {
 
 // Day names for work days selector
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/**
+ * AnalyticsToggle - Standalone component for analytics opt-in/out
+ * Uses its own state since analytics is managed via IPC, not the settings store
+ */
+const AnalyticsToggle: React.FC = () => {
+  const [isEnabled, setIsEnabled] = useState(false)
+  const [isAvailable, setIsAvailable] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadAnalyticsState = async () => {
+      try {
+        const [enabled, available] = await Promise.all([
+          window.milo.analytics.isEnabled(),
+          window.milo.analytics.isAvailable(),
+        ])
+        setIsEnabled(enabled)
+        setIsAvailable(available)
+      } catch (error) {
+        console.error('Failed to load analytics state:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadAnalyticsState()
+  }, [])
+
+  const handleToggle = async () => {
+    try {
+      if (isEnabled) {
+        await window.milo.analytics.disable()
+        setIsEnabled(false)
+      } else {
+        await window.milo.analytics.enable()
+        setIsEnabled(true)
+      }
+    } catch (error) {
+      console.error('Failed to toggle analytics:', error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <span className="text-sm text-pipboy-green-dim">Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-between py-2">
+      <div>
+        <span className="text-sm text-pipboy-green">Help Improve MILO</span>
+        <p className="text-[10px] text-pipboy-green-dim/60">
+          {isAvailable
+            ? 'Share anonymous usage data to help us improve'
+            : 'Analytics unavailable (no API key configured)'}
+        </p>
+      </div>
+      <button
+        onClick={handleToggle}
+        disabled={!isAvailable}
+        className={`
+          p-1 rounded-sm transition-all
+          ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}
+          ${isEnabled ? 'text-pipboy-green' : 'text-pipboy-green-dim'}
+        `}
+      >
+        {isEnabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+      </button>
+    </div>
+  )
+}
 
 /**
  * SettingsPage - Comprehensive settings management
@@ -489,6 +566,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               </div>
               <ChevronRight size={16} className="text-pipboy-green-dim group-hover:text-pipboy-green" />
             </button>
+          </div>
+        </section>
+
+        {/* Privacy & Data Section */}
+        <section>
+          <SectionHeader icon={<Shield size={14} />} title="Privacy & Data" />
+          <div className="space-y-2 pl-1">
+            <AnalyticsToggle />
           </div>
         </section>
 

@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent } from 'react'
+import React, { useState, KeyboardEvent, useRef, useEffect } from 'react'
 import { Send } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -16,6 +16,7 @@ interface ChatInputProps {
  * - Enter key to send (Shift+Enter for new line)
  * - Auto-clear on send
  * - Disabled state while generating
+ * - Auto-refocus after AI response completes
  * - Pip-Boy terminal styling
  *
  * Usage:
@@ -27,12 +28,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = 'Type your message...',
 }) => {
   const [message, setMessage] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wasDisabledRef = useRef(disabled)
+
+  // Auto-focus when disabled changes from true to false (AI finished generating)
+  useEffect(() => {
+    if (wasDisabledRef.current && !disabled) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 50)
+    }
+    wasDisabledRef.current = disabled
+  }, [disabled])
 
   const handleSend = () => {
     const trimmed = message.trim()
     if (trimmed && !disabled) {
       onSend(trimmed)
       setMessage('')
+      // Keep focus after sending
+      inputRef.current?.focus()
     }
   }
 
@@ -46,6 +62,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="flex items-center gap-2 p-3">
       <Input
+        ref={inputRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}

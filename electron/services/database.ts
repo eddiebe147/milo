@@ -343,7 +343,34 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v4 complete')
   }
 
-  // Future migrations go here (if version < 5, etc.)
+  if (version < 5) {
+    console.log('[Database] Running migration v5: Add analytics settings columns')
+
+    // Add analytics_enabled column (defaults to false - opt-in required)
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN analytics_enabled INTEGER DEFAULT 0`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Add analytics_id column for anonymous user identifier
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN analytics_id TEXT`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    database.pragma('user_version = 5')
+    console.log('[Database] Migration v5 complete')
+  }
+
+  // Future migrations go here (if version < 6, etc.)
 }
 
 // Default app classifications for common productivity apps
