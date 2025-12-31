@@ -70,6 +70,9 @@ interface TasksState {
   smartStartTask: (id: string) => Promise<ExecutionResult | null>
   classifyTask: (id: string) => Promise<TaskActionPlan | null>
   getRelatedTasks: (task: Task) => Task[]
+
+  // Event listener for external task changes (e.g., from chat tool calls)
+  setupTasksChangedListener: () => () => void
 }
 
 // Helper to check if we need to reset morning context (new day)
@@ -458,5 +461,20 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
     // Return goal-related first, then category-related (limit to 5 total)
     return [...sameGoal, ...sameCategory].slice(0, 5)
+  },
+
+  // Setup listener for external task changes (e.g., from chat tool calls)
+  setupTasksChangedListener: () => {
+    if (!window.milo?.events?.onTasksChanged) {
+      console.warn('[TasksStore] Tasks changed event listener not available')
+      return () => {}
+    }
+
+    const cleanup = window.milo.events.onTasksChanged(() => {
+      console.log('[TasksStore] Tasks changed externally, refreshing...')
+      get().fetchSignalQueue()
+    })
+
+    return cleanup
   },
 }))

@@ -183,6 +183,7 @@ export interface MiloAPI {
     onToggleMonitoring: (callback: (paused: boolean) => void) => () => void
     onActivityStateChanged: (callback: (payload: { appName: string; windowTitle: string; state: ActivityState; stateChanged: boolean }) => void) => () => void
     onNudgeTriggered: (callback: (nudge: NudgeEvent) => void) => () => void
+    onTasksChanged: (callback: () => void) => () => void
   }
   goals: {
     getAll: () => Promise<Goal[]>

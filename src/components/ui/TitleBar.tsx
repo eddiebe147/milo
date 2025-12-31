@@ -18,20 +18,20 @@ export const TitleBar: React.FC = () => {
   }
 
   return (
-    <div className="drag-region h-10 flex items-center justify-between px-3 bg-pipboy-surface/80 border-b border-pipboy-border">
-      {/* Logo / Title */}
+    <div className="drag-region h-10 flex items-center justify-center px-3 bg-pipboy-surface/80 border-b border-pipboy-border relative">
+      {/* Logo / Title - Centered */}
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 rounded-full bg-pipboy-green shadow-glow-green animate-pulse" />
         <span className="text-sm text-pipboy-green glow-low font-bold tracking-wider">
           MILO
         </span>
         <span className="text-xs text-pipboy-green-dim">
-          v0.3.0
+          v0.4.0
         </span>
       </div>
 
-      {/* Window Controls */}
-      <div className="no-drag flex items-center gap-1">
+      {/* Window Controls - Positioned right */}
+      <div className="no-drag flex items-center gap-1 absolute right-3">
         <button
           onClick={handleTogglePin}
           className={`

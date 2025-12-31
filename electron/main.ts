@@ -32,10 +32,10 @@ let tray: Tray | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 400,
-    height: 600,
-    minWidth: 320,
-    minHeight: 480,
+    width: 480,
+    height: 720,
+    minWidth: 400,
+    minHeight: 600,
     show: false,
     frame: false,
     transparent: true,
@@ -346,8 +346,30 @@ function setupIPC(): void {
         },
       })
 
+      // Helper to resolve task ID - tries ID first, then searches by title
+      const resolveTaskId = (taskIdOrTitle: string): string | null => {
+        // First try as-is (exact ID match)
+        const byId = tasksRepository.getById(taskIdOrTitle)
+        if (byId) return taskIdOrTitle
+
+        // Try searching all tasks for a title match
+        const allTasks = [...allIncompleteTasks, ...todayTasks]
+        const byTitle = allTasks.find(t =>
+          t.title.toLowerCase() === taskIdOrTitle.toLowerCase() ||
+          t.title.toLowerCase().includes(taskIdOrTitle.toLowerCase())
+        )
+        if (byTitle) {
+          console.log(`[IPC] Resolved task by title: "${taskIdOrTitle}" → ${byTitle.id}`)
+          return byTitle.id
+        }
+
+        return null
+      }
+
       // Execute any tool calls
       const toolResults: string[] = []
+      let tasksModified = false
+
       if (response.toolCalls) {
         for (const toolCall of response.toolCalls) {
           try {
@@ -356,23 +378,41 @@ function setupIPC(): void {
 
             switch (toolCall.name) {
               case 'complete_task': {
-                const taskId = input.task_id as string
-                const task = tasksRepository.complete(taskId)
-                result = task ? `Completed: ${task.title}` : `Task not found: ${taskId}`
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
+                const task = tasksRepository.complete(resolvedId)
+                result = task ? `Completed: ${task.title}` : `Failed to complete task`
+                tasksModified = true
                 break
               }
               case 'update_task_priority': {
-                const taskId = input.task_id as string
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
                 const priority = input.priority as number
-                const task = tasksRepository.update(taskId, { priority })
-                result = task ? `Updated priority for "${task.title}" to ${priority}` : `Task not found: ${taskId}`
+                const task = tasksRepository.update(resolvedId, { priority })
+                result = task ? `Updated priority for "${task.title}" to ${priority}` : `Failed to update task`
+                tasksModified = true
                 break
               }
               case 'update_task_status': {
-                const taskId = input.task_id as string
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
                 const status = input.status as string
-                const task = tasksRepository.update(taskId, { status: status as 'pending' | 'in_progress' | 'completed' | 'deferred' })
-                result = task ? `Updated status for "${task.title}" to ${status}` : `Task not found: ${taskId}`
+                const task = tasksRepository.update(resolvedId, { status: status as 'pending' | 'in_progress' | 'completed' | 'deferred' })
+                result = task ? `Updated status for "${task.title}" to ${status}` : `Failed to update task`
+                tasksModified = true
                 break
               }
               case 'create_task': {
@@ -389,25 +429,44 @@ function setupIPC(): void {
                   rationale: undefined,
                 })
                 result = `Created task: ${task.title}`
+                tasksModified = true
                 break
               }
               case 'delete_task': {
-                const taskId = input.task_id as string
-                const task = tasksRepository.getById(taskId)
-                const deleted = tasksRepository.delete(taskId)
-                result = deleted && task ? `Deleted: ${task.title}` : `Task not found: ${taskId}`
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
+                const task = tasksRepository.getById(resolvedId)
+                const deleted = tasksRepository.delete(resolvedId)
+                result = deleted && task ? `Deleted: ${task.title}` : `Failed to delete task`
+                tasksModified = true
                 break
               }
               case 'start_task': {
-                const taskId = input.task_id as string
-                const task = tasksRepository.start(taskId)
-                result = task ? `Started: ${task.title}` : `Task not found: ${taskId}`
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
+                const task = tasksRepository.start(resolvedId)
+                result = task ? `Started: ${task.title}` : `Failed to start task`
+                tasksModified = true
                 break
               }
               case 'defer_task': {
-                const taskId = input.task_id as string
-                const task = tasksRepository.defer(taskId)
-                result = task ? `Deferred: ${task.title}` : `Task not found: ${taskId}`
+                const taskIdOrTitle = input.task_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
+                const task = tasksRepository.defer(resolvedId)
+                result = task ? `Deferred: ${task.title}` : `Failed to defer task`
+                tasksModified = true
                 break
               }
               default:
@@ -421,6 +480,11 @@ function setupIPC(): void {
             toolResults.push(`Error: ${toolCall.name} failed`)
           }
         }
+      }
+
+      // Notify renderer to refresh tasks if any were modified
+      if (tasksModified && mainWindow) {
+        mainWindow.webContents.send('tasks-changed')
       }
 
       // Combine message with tool results
