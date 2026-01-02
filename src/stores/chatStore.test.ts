@@ -395,13 +395,14 @@ describe('chatStore', () => {
       expect(useChatStore.getState().isGenerating).toBe(false)
     })
 
-    it('calls AI chat API with message and history', async () => {
+    it('calls AI chat API with message, history, and project context', async () => {
       const store = useChatStore.getState()
       await store.sendMessage('Hello MILO')
 
       expect(window.milo.ai.chat).toHaveBeenCalledWith(
         'Hello MILO',
-        expect.any(Array)
+        expect.any(Array),
+        null // activeProjectId (null when no project filter)
       )
     })
 
