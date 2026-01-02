@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { Minus, X, Pin } from 'lucide-react'
+import { MiloLogo } from './MiloLogo'
 
 export const TitleBar: React.FC = () => {
   const [isPinned, setIsPinned] = useState(false)
+  const [isVoiceMode, setIsVoiceMode] = useState(false)
 
   const handleMinimize = () => {
     window.milo?.window.minimize()
@@ -20,14 +22,8 @@ export const TitleBar: React.FC = () => {
   return (
     <div className="drag-region h-10 flex items-center justify-center px-3 bg-pipboy-surface/80 border-b border-pipboy-border relative">
       {/* Logo / Title - Centered */}
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-pipboy-green shadow-glow-green animate-pulse" />
-        <span className="text-sm text-pipboy-green glow-low font-bold tracking-wider">
-          MILO
-        </span>
-        <span className="text-xs text-pipboy-green-dim">
-          v0.4.0
-        </span>
+      <div className="flex items-center justify-center cursor-pointer" onClick={() => setIsVoiceMode(!isVoiceMode)}>
+        <MiloLogo mode={isVoiceMode ? 'voice' : 'logo'} size="sm" />
       </div>
 
       {/* Window Controls - Positioned right */}

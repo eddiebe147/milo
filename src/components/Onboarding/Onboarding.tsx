@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Rocket, Key, Target, Activity, Moon, ArrowRight, Check, ExternalLink } from 'lucide-react'
+import { LandingPageBackground } from '../ui/LandingPageBackground'
+import { MiloLogo } from '../ui/MiloLogo'
+
 
 interface OnboardingProps {
   onComplete: () => void
@@ -59,20 +62,19 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   }
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-8 bg-pipboy-background">
-      <div className="max-w-lg w-full">
+    <div className="h-full w-full flex items-center justify-center p-8 bg-pipboy-background relative overflow-hidden">
+      <LandingPageBackground />
+
+      <div className="max-w-lg w-full relative z-10">
         {/* Welcome Step */}
         {step === 'welcome' && (
           <div className="text-center space-y-6 animate-fadeIn">
-            <div className="w-24 h-24 mx-auto bg-pipboy-green/10 rounded-full flex items-center justify-center border border-pipboy-green/30">
-              <Rocket className="w-12 h-12 text-pipboy-green" />
+            <div className="flex justify-center mb-6">
+              <MiloLogo showText={true} size="xl" />
             </div>
 
             <div>
-              <h1 className="text-3xl font-bold text-pipboy-green glow-medium mb-2">
-                Welcome to MILO
-              </h1>
-              <p className="text-pipboy-green-dim text-lg">
+              <p className="text-pipboy-green-dim text-lg mt-4 font-mono tracking-wider">
                 Mission Intelligence Life Operator
               </p>
             </div>

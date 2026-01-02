@@ -70,6 +70,41 @@ body {
   z-index: 9999;
 }
 
+/* Film grain / noise texture - industrial wear */
+.crt-overlay .noise-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  z-index: 11;
+  animation: grain 0.5s steps(1) infinite;
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -1%); }
+  20% { transform: translate(1%, 1%); }
+  30% { transform: translate(-1%, 1%); }
+  40% { transform: translate(1%, -1%); }
+  50% { transform: translate(-1%, 0); }
+  60% { transform: translate(1%, 0); }
+  70% { transform: translate(0, 1%); }
+  80% { transform: translate(0, -1%); }
+  90% { transform: translate(1%, 1%); }
+}
+
+/* Scratch overlay - industrial wear marks */
+.crt-overlay .scratches {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='10' y1='45' x2='80' y2='52' stroke='%23fff' stroke-width='0.5' opacity='0.4'/%3E%3Cline x1='120' y1='130' x2='190' y2='138' stroke='%23fff' stroke-width='0.3' opacity='0.3'/%3E%3Cline x1='40' y1='160' x2='100' y2='168' stroke='%23fff' stroke-width='0.4' opacity='0.35'/%3E%3Cline x1='150' y1='30' x2='195' y2='25' stroke='%23fff' stroke-width='0.3' opacity='0.25'/%3E%3Cline x1='5' y1='90' x2='50' y2='95' stroke='%23fff' stroke-width='0.4' opacity='0.3'/%3E%3Cline x1='160' y1='75' x2='198' y2='70' stroke='%23fff' stroke-width='0.3' opacity='0.2'/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+  pointer-events: none;
+  z-index: 12;
+}
+
 /* Chromatic aberration - subtle RGB split at edges */
 .crt-overlay::before {
   content: '';
