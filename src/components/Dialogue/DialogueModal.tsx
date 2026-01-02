@@ -3,7 +3,21 @@ import { X, Radio } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { GlowText } from '@/components/ui/GlowText'
+import { useTextToSpeech } from '@/hooks'
+import { useSettingsStore } from '@/stores/settingsStore'
 import type { DialogueMessage } from '@/stores/aiStore'
+
+// Track which message IDs have already been spoken (with size limit to prevent memory leak)
+const MAX_SPOKEN_MESSAGES = 50
+const spokenMessageIds = new Set<string>()
+
+function addSpokenMessage(id: string) {
+  if (spokenMessageIds.size >= MAX_SPOKEN_MESSAGES) {
+    const firstId = spokenMessageIds.values().next().value
+    if (firstId) spokenMessageIds.delete(firstId)
+  }
+  spokenMessageIds.add(id)
+}
 
 interface DialogueModalProps {
   isOpen: boolean
@@ -28,10 +42,49 @@ export const DialogueModal: React.FC<DialogueModalProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Get voice settings from store
+  const { settings } = useSettingsStore()
+  const { voiceEnabled, voiceId, voiceRate } = settings
+
+  // Initialize TTS hook with settings
+  const { speak } = useTextToSpeech({
+    voiceId: voiceId || undefined,
+    rate: voiceRate,
+  })
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Speak new assistant messages when modal is open
+  useEffect(() => {
+    if (!isOpen || !voiceEnabled) return
+
+    // Find the latest assistant message that hasn't been spoken yet
+    const latestAssistantMessage = [...messages]
+      .reverse()
+      .find(msg => msg.role === 'assistant' && !spokenMessageIds.has(msg.id))
+
+    if (latestAssistantMessage) {
+      addSpokenMessage(latestAssistantMessage.id)
+      speak(latestAssistantMessage.content)
+    }
+  }, [messages, isOpen, voiceEnabled, speak])
+
+  // Stop speech when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      window.speechSynthesis?.cancel()
+    }
+  }, [isOpen])
+
+  // Stop speech on unmount - use direct API call to avoid dependency issues
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel()
+    }
+  }, [])
 
   if (!isOpen) return null
 

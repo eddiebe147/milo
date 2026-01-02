@@ -15,9 +15,12 @@ import {
   RefreshCw,
   Pause,
   Shield,
+  Volume2,
+  Play,
 } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useModal } from '@/contexts/ModalContext'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 import type { UserSettings } from '@/types'
 
 interface SettingsPageProps {
@@ -122,6 +125,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
 
   // Local state for form fields
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings)
+
+  // Initialize text-to-speech with current settings
+  const { voices, speak } = useTextToSpeech({
+    voiceId: localSettings.voiceId,
+    rate: localSettings.voiceRate,
+  })
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -148,6 +157,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       ? currentDays.filter((d) => d !== day)
       : [...currentDays, day].sort()
     handleChange('workDays', newDays)
+  }
+
+  // Handle voice test
+  const handleTestVoice = () => {
+    speak('Hello, I am MILO. Your Mission Intelligence Life Operator.')
   }
 
   // Save settings
@@ -181,6 +195,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       startMinimized: false,
       showInDock: true,
       refillMode: 'endless',
+      // Voice output
+      voiceEnabled: true,
+      voiceId: '',
+      voiceRate: 1.0,
     }
     setLocalSettings(defaults)
     setHasChanges(true)
@@ -516,6 +534,96 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               label="Show in Dock"
               description="Display MILO icon in the macOS dock"
             />
+          </div>
+        </section>
+
+        {/* Voice Output Section */}
+        <section>
+          <SectionHeader icon={<Volume2 size={14} />} title="Voice Output" />
+          <div className="space-y-3 pl-1">
+            <Toggle
+              enabled={localSettings.voiceEnabled}
+              onChange={(v) => handleChange('voiceEnabled', v)}
+              label="Voice Output"
+              description="MILO speaks AI responses aloud"
+            />
+
+            {localSettings.voiceEnabled && (
+              <>
+                {/* Voice Selector */}
+                <div className="flex flex-col gap-2 pt-2">
+                  <label className="text-xs text-pipboy-green-dim">Voice</label>
+                  <select
+                    value={localSettings.voiceId || ''}
+                    onChange={(e) => handleChange('voiceId', e.target.value)}
+                    className="
+                      px-3 py-2 rounded-sm
+                      bg-pipboy-surface border border-pipboy-border
+                      text-pipboy-green text-sm
+                      focus:outline-none focus:border-pipboy-green/50
+                      cursor-pointer
+                    "
+                  >
+                    <option value="">Default Voice</option>
+                    {voices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Speed Slider */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-pipboy-green-dim">Speed</label>
+                    <span className="text-xs text-pipboy-green font-mono">
+                      {localSettings.voiceRate.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={localSettings.voiceRate}
+                    onChange={(e) => handleChange('voiceRate', parseFloat(e.target.value))}
+                    className="
+                      w-full h-2 rounded-sm
+                      bg-pipboy-surface border border-pipboy-border
+                      cursor-pointer
+                      appearance-none
+                      [&::-webkit-slider-thumb]:appearance-none
+                      [&::-webkit-slider-thumb]:w-4
+                      [&::-webkit-slider-thumb]:h-4
+                      [&::-webkit-slider-thumb]:rounded-full
+                      [&::-webkit-slider-thumb]:bg-pipboy-green
+                      [&::-webkit-slider-thumb]:cursor-pointer
+                      [&::-moz-range-thumb]:w-4
+                      [&::-moz-range-thumb]:h-4
+                      [&::-moz-range-thumb]:rounded-full
+                      [&::-moz-range-thumb]:bg-pipboy-green
+                      [&::-moz-range-thumb]:border-0
+                      [&::-moz-range-thumb]:cursor-pointer
+                    "
+                  />
+                </div>
+
+                {/* Test Button */}
+                <button
+                  onClick={handleTestVoice}
+                  className="
+                    flex items-center justify-center gap-2 px-3 py-2 rounded-sm
+                    bg-pipboy-surface border border-pipboy-border
+                    hover:border-pipboy-green/50 hover:bg-pipboy-green/5
+                    text-pipboy-green text-sm transition-all
+                  "
+                >
+                  <Play size={14} />
+                  <span>Test Voice</span>
+                </button>
+              </>
+            )}
           </div>
         </section>
 

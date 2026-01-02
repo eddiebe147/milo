@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { GlowText } from '@/components/ui/GlowText'
+import { useTextToSpeech } from '@/hooks'
+import { useSettingsStore } from '@/stores/settingsStore'
 import type { ChatMessage } from '@/stores'
 
 interface ChatMessagesProps {
@@ -10,6 +12,18 @@ interface ChatMessagesProps {
 
 // Track which message IDs have already been animated (persists across re-renders)
 const animatedMessageIds = new Set<string>()
+
+// Track which message IDs have already been spoken (with size limit to prevent memory leak)
+const MAX_SPOKEN_MESSAGES = 100
+const spokenMessageIds = new Set<string>()
+
+function addSpokenMessage(id: string) {
+  if (spokenMessageIds.size >= MAX_SPOKEN_MESSAGES) {
+    const firstId = spokenMessageIds.values().next().value
+    if (firstId) spokenMessageIds.delete(firstId)
+  }
+  spokenMessageIds.add(id)
+}
 
 /**
  * ChatMessages - Terminal-style message list with typewriter effect
@@ -23,6 +37,38 @@ const animatedMessageIds = new Set<string>()
  */
 export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, onTypingProgress }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Get voice settings from store
+  const { settings } = useSettingsStore()
+  const { voiceEnabled, voiceId, voiceRate } = settings
+
+  // Initialize TTS hook with settings
+  const { speak } = useTextToSpeech({
+    voiceId: voiceId || undefined,
+    rate: voiceRate,
+  })
+
+  // Speak new assistant messages
+  useEffect(() => {
+    if (!voiceEnabled) return
+
+    // Find the latest assistant message that hasn't been spoken yet
+    const latestAssistantMessage = [...messages]
+      .reverse()
+      .find(msg => msg.role === 'assistant' && !spokenMessageIds.has(msg.id))
+
+    if (latestAssistantMessage) {
+      addSpokenMessage(latestAssistantMessage.id)
+      speak(latestAssistantMessage.content)
+    }
+  }, [messages, voiceEnabled, speak])
+
+  // Stop speech on unmount - use direct API call to avoid dependency issues
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis?.cancel()
+    }
+  }, [])
 
   // Scroll to bottom helper
   const scrollToBottom = useCallback(() => {

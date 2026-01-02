@@ -21,6 +21,11 @@ const DEFAULT_SETTINGS: UserSettings = {
 
   // Default to endless mode - auto-refill signal queue as tasks complete
   refillMode: 'endless',
+
+  // Voice output defaults
+  voiceEnabled: true,
+  voiceId: '',
+  voiceRate: 1.0,
 }
 
 // Default theme colors
@@ -46,6 +51,7 @@ interface SettingsState {
   updateClassification: (classification: Omit<AppClassification, 'id' | 'createdAt'>) => Promise<void>
   toggleAlwaysOnTop: () => Promise<boolean>
   toggleRefillMode: () => void
+  setVoiceSetting: (key: 'voiceEnabled' | 'voiceId' | 'voiceRate', value: boolean | string | number) => void
   loadThemeColors: () => Promise<void>
   setThemeColor: (key: keyof ThemeColors, value: string) => Promise<void>
   setThemeColors: (colors: Partial<ThemeColors>) => Promise<void>
@@ -134,6 +140,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       settings: {
         ...state.settings,
         refillMode: state.settings.refillMode === 'endless' ? 'daily_reset' : 'endless',
+      },
+    }))
+    // TODO: Persist to database via IPC when settings persistence is implemented
+  },
+
+  setVoiceSetting: (key: 'voiceEnabled' | 'voiceId' | 'voiceRate', value: boolean | string | number) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        [key]: value,
       },
     }))
     // TODO: Persist to database via IPC when settings persistence is implemented

@@ -44,6 +44,8 @@ export default {
         'scanline': 'scanline 8s linear infinite',
         'glow': 'glow 2s ease-in-out infinite alternate',
         'breathe': 'breathe 4s ease-in-out infinite',
+        'ping-slow': 'ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'fade-in': 'fade-in 0.2s ease-out',
       },
       keyframes: {
         flicker: {
@@ -61,6 +63,14 @@ export default {
         breathe: {
           '0%, 100%': { transform: 'scale(1)', opacity: '1' },
           '50%': { transform: 'scale(0.98)', opacity: '0.85' },
+        },
+        'ping-slow': {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '50%, 100%': { transform: 'scale(1.1)', opacity: '0' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
     },

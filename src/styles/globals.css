@@ -16,6 +16,11 @@
   --pipboy-background: #0a0a0a;
   --pipboy-surface: #1a1a1a;
   --pipboy-border: #333333;
+
+  /* Theme color variables for dynamic theming */
+  --color-primary: var(--pipboy-green);
+  --color-accent: var(--pipboy-amber);
+  --color-danger: var(--pipboy-red);
 }
 
 * {

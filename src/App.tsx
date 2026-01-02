@@ -9,6 +9,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
 import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
 import { Onboarding } from '@/components/Onboarding'
+import { VoiceAssistantButton } from '@/components/VoiceAssistant'
 import { useNudgeStore, useAIStore, useTasksStore } from '@/stores'
 import { useThemeColors } from '@/hooks/useThemeColors'
 import { ModalProvider, useModal } from '@/contexts/ModalContext'
@@ -141,6 +142,9 @@ function AppContent() {
         onClose={closeCommandPalette}
         onNavigate={setCurrentView}
       />
+
+      {/* Voice Assistant Button - Show only on dashboard */}
+      {currentView === 'dashboard' && <VoiceAssistantButton />}
     </div>
   )
 }
