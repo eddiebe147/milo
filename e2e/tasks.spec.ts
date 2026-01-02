@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, Page } from '@playwright/test'
 
 /**
  * E2E Tests for Task Management
@@ -11,9 +11,45 @@ import { test, expect } from '@playwright/test'
  * 5. Task filtering by project
  */
 
+// Helper to bypass onboarding if present
+async function bypassOnboardingIfPresent(page: Page) {
+  try {
+    // Step 1: Check if welcome screen is visible (Welcome to MILO)
+    const getStartedButton = page.getByRole('button', { name: 'Get Started' })
+    const isOnboarding = await getStartedButton.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (isOnboarding) {
+      await getStartedButton.click()
+      await page.waitForTimeout(500)
+    }
+
+    // Step 2: Check if API key setup screen is visible (Connect to Claude)
+    const skipButton = page.getByRole('button', { name: 'Skip for now' })
+    const isApiKeyScreen = await skipButton.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (isApiKeyScreen) {
+      await skipButton.click()
+      await page.waitForTimeout(500)
+    }
+
+    // Step 3: Check if "How MILO Works" screen is visible
+    const startUsingButton = page.getByRole('button', { name: 'Start Using MILO' })
+    const isHowItWorksScreen = await startUsingButton.isVisible({ timeout: 2000 }).catch(() => false)
+
+    if (isHowItWorksScreen) {
+      await startUsingButton.click()
+      // Wait for the main dashboard to load
+      await page.waitForSelector('text=SIGNAL QUEUE', { timeout: 10000 })
+    }
+  } catch {
+    // No onboarding screen, continue normally
+  }
+}
+
 test.describe('Task Management - Creating Tasks', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
+    await bypassOnboardingIfPresent(page)
     // Wait for the app to be ready
     await page.waitForSelector('button[title="Add new task"]', { timeout: 10000 })
   })
@@ -193,61 +229,8 @@ test.describe('Task Management - Signal Queue', () => {
   })
 })
 
-test.describe('Task Management - Task Actions', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/')
-    await page.waitForSelector('button[title="Add new task"]', { timeout: 10000 })
-
-    // Create a test task first
-    const fabButton = page.locator('button[title="Add new task"]')
-    await fabButton.click()
-
-    const titleInput = page.getByPlaceholder('What needs to be done?')
-    await titleInput.fill('Action test task')
-
-    const createButton = page.getByRole('button', { name: 'Create Task' })
-    await createButton.click()
-
-    await page.waitForTimeout(500)
-  })
-
-  test('should show task action buttons on hover', async ({ page }) => {
-    // Find the created task
-    const taskElement = page.getByText('Action test task').first()
-    await expect(taskElement).toBeVisible({ timeout: 5000 })
-
-    // Hover over the task row
-    const taskRow = taskElement.locator('xpath=ancestor::*[contains(@class, "group")]').first()
-    if (await taskRow.isVisible()) {
-      await taskRow.hover()
-
-      // Action buttons should appear (start/complete/defer icons)
-      await page.waitForTimeout(300) // Wait for hover state
-    }
-  })
-
-  test('should be able to complete a task', async ({ page }) => {
-    // Find the created task
-    const taskText = page.getByText('Action test task').first()
-    await expect(taskText).toBeVisible()
-
-    // Find and click the checkbox or complete button
-    // Look for a checkbox input near the task
-    const taskRow = taskText.locator('xpath=ancestor::*[contains(@class, "flex")]').first()
-
-    if (await taskRow.isVisible()) {
-      // Look for checkbox/complete button within the row
-      const checkbox = taskRow.locator('input[type="checkbox"], button[title*="omplete"]').first()
-
-      if (await checkbox.isVisible()) {
-        await checkbox.click()
-
-        // Task might be marked complete or removed from queue
-        await page.waitForTimeout(500)
-      }
-    }
-  })
-})
+// Note: Task Actions tests have been moved to task-actions.spec.ts
+// Those tests use a mock window.milo API for proper E2E testing without Electron
 
 test.describe('Task Management - Project Filtering', () => {
   test.beforeEach(async ({ page }) => {
