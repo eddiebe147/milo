@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 const resourcesDir = join(projectRoot, 'resources');
 const iconsetDir = join(resourcesDir, 'icon.iconset');
-const svgPath = join(resourcesDir, 'icon.svg');
+const sourcePath = join(resourcesDir, 'icon-source.png'); // Waveform gauge PNG
 const icnsPath = join(resourcesDir, 'icon.icns');
 
 // Icon sizes needed for macOS .icns
@@ -46,15 +46,15 @@ async function generateIcons() {
   }
   mkdirSync(iconsetDir, { recursive: true });
 
-  // Generate each size
+  // Generate each size from PNG source
   for (const { name, size } of sizes) {
     const outputPath = join(iconsetDir, name);
 
-    // Use appropriate density - lower for large sizes to avoid pixel limit
-    const density = size >= 512 ? 144 : 288;
-
-    await sharp(svgPath, { density })
-      .resize(size, size)
+    await sharp(sourcePath)
+      .resize(size, size, {
+        fit: 'cover',
+        kernel: sharp.kernel.lanczos3
+      })
       .png()
       .toFile(outputPath);
 
