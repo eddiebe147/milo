@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { Category } from '../types'
 
@@ -31,7 +32,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       // Uses same IPC as categories (backend unchanged)
-      const projects = await window.milo.categories.getActive()
+      const projects = await milo.categories.getActive()
       set({ projects, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -44,7 +45,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
   createProject: async (project) => {
     try {
-      const newProject = await window.milo.categories.create(project)
+      const newProject = await milo.categories.create(project)
       if (newProject) {
         set((state) => ({ projects: [...state.projects, newProject] }))
       }
@@ -57,7 +58,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
   updateProject: async (id, updates) => {
     try {
-      const updatedProject = await window.milo.categories.update(id, updates)
+      const updatedProject = await milo.categories.update(id, updates)
       if (updatedProject) {
         set((state) => ({
           projects: state.projects.map((p) => (p.id === id ? updatedProject : p)),
@@ -72,7 +73,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
   deleteProject: async (id) => {
     try {
-      const success = await window.milo.categories.delete(id)
+      const success = await milo.categories.delete(id)
       if (success) {
         set((state) => ({
           projects: state.projects.filter((p) => p.id !== id),
@@ -89,9 +90,9 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
   reorderProjects: async (orderedIds) => {
     try {
-      await window.milo.categories.reorder(orderedIds)
+      await milo.categories.reorder(orderedIds)
       // Re-fetch to get updated sort orders
-      const projects = await window.milo.categories.getActive()
+      const projects = await milo.categories.getActive()
       set({ projects })
     } catch (error) {
       set({ error: (error as Error).message })

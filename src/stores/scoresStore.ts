@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { DailyScore, ScoreBreakdown } from '../types'
 
@@ -42,7 +43,7 @@ export const useScoresStore = create<ScoresState>((set) => ({
   fetchTodayScore: async () => {
     set({ isLoading: true, error: null })
     try {
-      const todayScore = await window.milo.scores.getToday()
+      const todayScore = await milo.scores.getToday()
       set({ todayScore, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -52,7 +53,7 @@ export const useScoresStore = create<ScoresState>((set) => ({
   fetchRecentScores: async (days = 7) => {
     set({ isLoading: true, error: null })
     try {
-      const recentScores = await window.milo.scores.getRecent(days)
+      const recentScores = await milo.scores.getRecent(days)
       set({ recentScores, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -61,7 +62,7 @@ export const useScoresStore = create<ScoresState>((set) => ({
 
   fetchStreak: async () => {
     try {
-      const currentStreak = await window.milo.scores.getCurrentStreak()
+      const currentStreak = await milo.scores.getCurrentStreak()
       set({ currentStreak })
     } catch (error) {
       set({ error: (error as Error).message })
@@ -70,7 +71,7 @@ export const useScoresStore = create<ScoresState>((set) => ({
 
   calculateScore: async () => {
     try {
-      const todayScore = await window.milo.scores.calculate()
+      const todayScore = await milo.scores.calculate()
       set({ todayScore })
       return todayScore
     } catch (error) {
@@ -82,7 +83,7 @@ export const useScoresStore = create<ScoresState>((set) => ({
   getScoreBreakdown: async (date?: string) => {
     try {
       const targetDate = date || new Date().toISOString().split('T')[0]
-      const scoreDetails = await window.milo.scores.getBreakdown(targetDate)
+      const scoreDetails = await milo.scores.getBreakdown(targetDate)
       set({ scoreDetails })
       return scoreDetails
     } catch (error) {

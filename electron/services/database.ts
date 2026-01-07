@@ -370,7 +370,34 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v5 complete')
   }
 
-  // Future migrations go here (if version < 6, etc.)
+  if (version < 6) {
+    console.log('[Database] Running migration v6: Add AI provider and model columns')
+
+    // Add api_provider column (defaults to 'claude' for backwards compatibility)
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN api_provider TEXT DEFAULT 'claude'`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Add api_model column (null means use default for provider)
+    try {
+      database.prepare(`ALTER TABLE user_settings ADD COLUMN api_model TEXT`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    database.pragma('user_version = 6')
+    console.log('[Database] Migration v6 complete')
+  }
+
+  // Future migrations go here (if version < 7, etc.)
 }
 
 // Default app classifications for common productivity apps

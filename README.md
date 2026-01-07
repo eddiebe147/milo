@@ -183,6 +183,18 @@ CREATE TABLE categories (
 - **Claude API key** from [Anthropic Console](https://console.anthropic.com/)
 - ~200MB disk space
 
+## Updating MILO
+
+MILO will notify you in the app when a new version is available. To update:
+
+1. Go to **Settings** and look for the update notification
+2. Click the download link to get the latest DMG from [Releases](../../releases)
+3. Close MILO completely (Quit from menu bar or Cmd+Q)
+4. Open the new DMG and drag MILO to Applications (replace existing)
+5. Launch the updated app
+
+> **Note**: Your data (tasks, goals, settings) is preserved between updates - it's stored in `~/Library/Application Support/MILO/`.
+
 ## Roadmap
 
 ### V1.1 (Planned)
@@ -197,11 +209,27 @@ CREATE TABLE categories (
 
 ## Troubleshooting
 
+### macOS Gatekeeper Issues
+
+Since MILO is not from the App Store, macOS Gatekeeper may block it. Here's how to resolve common issues:
+
 **"MILO can't be opened because it is from an unidentified developer"**
 → Right-click the app → Open → Click "Open" in the dialog
 
+**"MILO is damaged and can't be opened"**
+→ This is a quarantine flag issue. Open Terminal and run:
+```bash
+xattr -cr /Applications/MILO.app
+```
+Then try opening the app again.
+
+**App still won't open after "Open Anyway"**
+→ Go to **System Settings → Privacy & Security**, scroll down and look for a message about MILO being blocked. Click **"Open Anyway"**, then try launching again.
+
+### Other Issues
+
 **Activity monitoring not working**
-→ Grant accessibility permissions: System Preferences → Security & Privacy → Privacy → Accessibility → Add MILO
+→ Grant accessibility permissions: System Settings → Privacy & Security → Privacy → Accessibility → Add MILO
 
 **Claude API errors**
 → Verify your API key in Settings → Check your Anthropic account has credits

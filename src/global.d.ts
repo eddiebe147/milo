@@ -1,14 +1,27 @@
 // Global type declarations for MILO
-// Uses MiloAPI from electron/preload.ts as the source of truth
 
-/// <reference path="../electron/preload.ts" />
-
-import type { MiloAPI, ExecutionTarget } from '../electron/preload'
-
-declare global {
-  interface Window {
-    milo: MiloAPI
-  }
+// Image imports
+declare module '*.png' {
+  const src: string
+  export default src
 }
 
-export type { ExecutionTarget }
+declare module '*.jpg' {
+  const src: string
+  export default src
+}
+
+declare module '*.svg' {
+  const src: string
+  export default src
+}
+
+declare module '*.webp' {
+  const src: string
+  export default src
+}
+
+// Global window extension
+interface Window {
+  milo: any // We use the abstracted milo from @/lib/api now, but window.milo might still exist in Electron
+}

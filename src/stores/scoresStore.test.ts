@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useScoresStore } from './scoresStore'
 import type { DailyScore } from '../types'
@@ -51,7 +52,7 @@ describe('scoresStore', () => {
 
   describe('fetchTodayScore', () => {
     it('fetches and stores today score', async () => {
-      window.milo.scores.getToday = vi.fn().mockResolvedValue(mockDailyScore)
+      milo.scores.getToday = vi.fn().mockResolvedValue(mockDailyScore)
 
       const store = useScoresStore.getState()
       await store.fetchTodayScore()
@@ -62,7 +63,7 @@ describe('scoresStore', () => {
     })
 
     it('sets loading state while fetching', async () => {
-      window.milo.scores.getToday = vi.fn().mockResolvedValue(mockDailyScore)
+      milo.scores.getToday = vi.fn().mockResolvedValue(mockDailyScore)
 
       const store = useScoresStore.getState()
       const fetchPromise = store.fetchTodayScore()
@@ -73,7 +74,7 @@ describe('scoresStore', () => {
     })
 
     it('handles errors', async () => {
-      window.milo.scores.getToday = vi.fn().mockRejectedValue(new Error('Fetch failed'))
+      milo.scores.getToday = vi.fn().mockRejectedValue(new Error('Fetch failed'))
 
       const store = useScoresStore.getState()
       await store.fetchTodayScore()
@@ -88,28 +89,28 @@ describe('scoresStore', () => {
     const recentScores = [mockDailyScore, { ...mockDailyScore, id: 'score-2', date: '2024-12-27' }]
 
     it('fetches recent scores with default days', async () => {
-      window.milo.scores.getRecent = vi.fn().mockResolvedValue(recentScores)
+      milo.scores.getRecent = vi.fn().mockResolvedValue(recentScores)
 
       const store = useScoresStore.getState()
       await store.fetchRecentScores()
 
-      expect(window.milo.scores.getRecent).toHaveBeenCalledWith(7)
+      expect(milo.scores.getRecent).toHaveBeenCalledWith(7)
       expect(useScoresStore.getState().recentScores).toEqual(recentScores)
     })
 
     it('fetches recent scores with custom days', async () => {
-      window.milo.scores.getRecent = vi.fn().mockResolvedValue(recentScores)
+      milo.scores.getRecent = vi.fn().mockResolvedValue(recentScores)
 
       const store = useScoresStore.getState()
       await store.fetchRecentScores(14)
 
-      expect(window.milo.scores.getRecent).toHaveBeenCalledWith(14)
+      expect(milo.scores.getRecent).toHaveBeenCalledWith(14)
     })
   })
 
   describe('fetchStreak', () => {
     it('fetches and stores current streak', async () => {
-      window.milo.scores.getCurrentStreak = vi.fn().mockResolvedValue(5)
+      milo.scores.getCurrentStreak = vi.fn().mockResolvedValue(5)
 
       const store = useScoresStore.getState()
       await store.fetchStreak()
@@ -118,7 +119,7 @@ describe('scoresStore', () => {
     })
 
     it('handles errors', async () => {
-      window.milo.scores.getCurrentStreak = vi.fn().mockRejectedValue(new Error('Streak failed'))
+      milo.scores.getCurrentStreak = vi.fn().mockRejectedValue(new Error('Streak failed'))
 
       const store = useScoresStore.getState()
       await store.fetchStreak()
@@ -129,7 +130,7 @@ describe('scoresStore', () => {
 
   describe('calculateScore', () => {
     it('calculates and returns score', async () => {
-      window.milo.scores.calculate = vi.fn().mockResolvedValue(mockDailyScore)
+      milo.scores.calculate = vi.fn().mockResolvedValue(mockDailyScore)
 
       const store = useScoresStore.getState()
       const result = await store.calculateScore()
@@ -139,7 +140,7 @@ describe('scoresStore', () => {
     })
 
     it('returns null on error', async () => {
-      window.milo.scores.calculate = vi.fn().mockRejectedValue(new Error('Calc failed'))
+      milo.scores.calculate = vi.fn().mockRejectedValue(new Error('Calc failed'))
 
       const store = useScoresStore.getState()
       const result = await store.calculateScore()

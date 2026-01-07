@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { ActivityState, ActivityLog, CurrentActivityState, StateChangedPayload } from '../types'
 
@@ -57,9 +58,9 @@ export const useActivityStore = create<ActivityStoreState>((set) => ({
     try {
       const today = new Date().toISOString().split('T')[0]
       const [logs, summary, breakdown] = await Promise.all([
-        window.milo.activity.getToday(),
-        window.milo.activity.getSummary(today),
-        window.milo.activity.getAppBreakdown(today),
+        milo.activity.getToday(),
+        milo.activity.getSummary(today),
+        milo.activity.getAppBreakdown(today),
       ])
       set({
         todayLogs: logs,
@@ -82,7 +83,7 @@ export const useActivityStore = create<ActivityStoreState>((set) => ({
 
   startMonitoring: async () => {
     try {
-      await window.milo.monitoring.start()
+      await milo.monitoring.start()
       set({ isMonitoring: true, isPaused: false })
     } catch (error) {
       set({ error: (error as Error).message })
@@ -91,7 +92,7 @@ export const useActivityStore = create<ActivityStoreState>((set) => ({
 
   stopMonitoring: async () => {
     try {
-      await window.milo.monitoring.stop()
+      await milo.monitoring.stop()
       set({ isMonitoring: false })
     } catch (error) {
       set({ error: (error as Error).message })
@@ -100,7 +101,7 @@ export const useActivityStore = create<ActivityStoreState>((set) => ({
 
   toggleMonitoring: async () => {
     try {
-      const isPaused = await window.milo.monitoring.toggle()
+      const isPaused = await milo.monitoring.toggle()
       set({ isPaused })
       return isPaused
     } catch (error) {
@@ -111,7 +112,7 @@ export const useActivityStore = create<ActivityStoreState>((set) => ({
 
   getMonitoringStatus: async () => {
     try {
-      const status = await window.milo.monitoring.status()
+      const status = await milo.monitoring.status()
       set({
         isMonitoring: status.isRunning,
         isPaused: status.isPaused,

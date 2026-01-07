@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { UserSettings, AppClassification, ThemeColors } from '../types'
 
@@ -21,6 +22,12 @@ const DEFAULT_SETTINGS: UserSettings = {
 
   // Default to endless mode - auto-refill signal queue as tasks complete
   refillMode: 'endless',
+
+  // Voice output defaults
+  voiceEnabled: true,
+  voiceMuted: false,
+  voiceId: '',
+  voiceRate: 1.0,
 }
 
 // Default theme colors
@@ -46,6 +53,8 @@ interface SettingsState {
   updateClassification: (classification: Omit<AppClassification, 'id' | 'createdAt'>) => Promise<void>
   toggleAlwaysOnTop: () => Promise<boolean>
   toggleRefillMode: () => void
+  setVoiceSetting: (key: 'voiceEnabled' | 'voiceId' | 'voiceRate', value: boolean | string | number) => void
+  toggleVoiceMute: () => void
   loadThemeColors: () => Promise<void>
   setThemeColor: (key: keyof ThemeColors, value: string) => Promise<void>
   setThemeColors: (colors: Partial<ThemeColors>) => Promise<void>
@@ -83,7 +92,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadClassifications: async () => {
     set({ isLoading: true, error: null })
     try {
-      const classifications = await window.milo.classifications.getAll()
+      const classifications = await milo.classifications.getAll()
       set({ classifications, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -92,7 +101,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   updateClassification: async (classification) => {
     try {
-      const updated = await window.milo.classifications.upsert(classification)
+      const updated = await milo.classifications.upsert(classification)
       if (updated) {
         set((state) => {
           const existing = state.classifications.find(
@@ -118,7 +127,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   toggleAlwaysOnTop: async () => {
     try {
-      const isAlwaysOnTop = await window.milo.window.toggleAlwaysOnTop()
+      const isAlwaysOnTop = await milo.window.toggleAlwaysOnTop()
       set((state) => ({
         settings: { ...state.settings, alwaysOnTop: isAlwaysOnTop },
       }))
@@ -139,9 +148,28 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // TODO: Persist to database via IPC when settings persistence is implemented
   },
 
+  setVoiceSetting: (key: 'voiceEnabled' | 'voiceId' | 'voiceRate', value: boolean | string | number) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        [key]: value,
+      },
+    }))
+    // TODO: Persist to database via IPC when settings persistence is implemented
+  },
+
+  toggleVoiceMute: () => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        voiceMuted: !state.settings.voiceMuted,
+      },
+    }))
+  },
+
   loadThemeColors: async () => {
     try {
-      const backendColors = await window.milo?.settings.getThemeColors()
+      const backendColors = await milo?.settings.getThemeColors()
       if (backendColors) {
         // Convert backend format (themePrimaryColor) to frontend format (primaryColor)
         const colors: ThemeColors = {
@@ -175,7 +203,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
 
     try {
-      await window.milo?.settings.setThemeColor(
+      await milo?.settings.setThemeColor(
         keyMap[key] as 'themePrimaryColor' | 'themeAccentColor' | 'themeDangerColor' | 'themeUserMessageColor' | 'themeAiMessageColor',
         value
       )
@@ -199,7 +227,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (colors.aiMessageColor) backendColors.themeAiMessageColor = colors.aiMessageColor
 
     try {
-      await window.milo?.settings.setThemeColors(backendColors)
+      await milo?.settings.setThemeColors(backendColors)
     } catch (error) {
       console.error('Failed to save theme colors:', error)
     }

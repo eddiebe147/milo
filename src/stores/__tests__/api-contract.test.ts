@@ -1,7 +1,8 @@
+import { milo } from "@/lib/api"
 /**
  * API Contract Tests
  *
- * These tests verify that Zustand stores call the correct window.milo API methods
+ * These tests verify that Zustand stores call the correct milo API methods
  * with the expected parameters. This validates the contract between the frontend
  * stores and the Electron IPC layer.
  *
@@ -143,8 +144,8 @@ describe('API Contract Tests', () => {
 
   beforeEach(() => {
     mockMilo = createMockMiloAPI()
-    // @ts-ignore - Setting up window.milo for tests
-    window.milo = mockMilo
+    // @ts-ignore - Setting up milo for tests
+    milo = mockMilo
   })
 
   afterEach(() => {
@@ -153,63 +154,63 @@ describe('API Contract Tests', () => {
 
   describe('Goals API Contract', () => {
     it('getAll should call goals.getAll()', async () => {
-      await window.milo!.goals.getAll()
+      await milo!.goals.getAll()
       expect(mockMilo.goals.getAll).toHaveBeenCalledTimes(1)
       expect(mockMilo.goals.getAll).toHaveBeenCalledWith()
     })
 
     it('getById should call goals.getById(id)', async () => {
-      await window.milo!.goals.getById('goal-123')
+      await milo!.goals.getById('goal-123')
       expect(mockMilo.goals.getById).toHaveBeenCalledWith('goal-123')
     })
 
     it('getHierarchy should call goals.getHierarchy()', async () => {
-      await window.milo!.goals.getHierarchy()
+      await milo!.goals.getHierarchy()
       expect(mockMilo.goals.getHierarchy).toHaveBeenCalledTimes(1)
     })
 
     it('create should call goals.create(goalData)', async () => {
       const goalData = { title: 'New Goal', timeframe: 'monthly' as const, parentId: null, status: 'active' as const }
-      await window.milo!.goals.create(goalData)
+      await milo!.goals.create(goalData)
       expect(mockMilo.goals.create).toHaveBeenCalledWith(goalData)
     })
 
     it('update should call goals.update(id, updates)', async () => {
       const updates = { title: 'Updated Title' }
-      await window.milo!.goals.update('goal-123', updates)
+      await milo!.goals.update('goal-123', updates)
       expect(mockMilo.goals.update).toHaveBeenCalledWith('goal-123', updates)
     })
 
     it('delete should call goals.delete(id)', async () => {
-      await window.milo!.goals.delete('goal-123')
+      await milo!.goals.delete('goal-123')
       expect(mockMilo.goals.delete).toHaveBeenCalledWith('goal-123')
     })
   })
 
   describe('Tasks API Contract', () => {
     it('getAll should call tasks.getAll()', async () => {
-      await window.milo!.tasks.getAll()
+      await milo!.tasks.getAll()
       expect(mockMilo.tasks.getAll).toHaveBeenCalledTimes(1)
     })
 
     it('getSignalQueue should call tasks.getSignalQueue(limit?)', async () => {
-      await window.milo!.tasks.getSignalQueue(5)
+      await milo!.tasks.getSignalQueue(5)
       expect(mockMilo.tasks.getSignalQueue).toHaveBeenCalledWith(5)
     })
 
     it('getSignalQueue without limit should still work', async () => {
-      await window.milo!.tasks.getSignalQueue()
+      await milo!.tasks.getSignalQueue()
       expect(mockMilo.tasks.getSignalQueue).toHaveBeenCalledWith()
     })
 
     it('getByCategory should call tasks.getByCategory(categoryId)', async () => {
-      await window.milo!.tasks.getByCategory('cat-123')
+      await milo!.tasks.getByCategory('cat-123')
       expect(mockMilo.tasks.getByCategory).toHaveBeenCalledWith('cat-123')
     })
 
     it('getBacklog should call tasks.getBacklog(signalQueueIds)', async () => {
       const signalQueueIds = ['task-1', 'task-2']
-      await window.milo!.tasks.getBacklog(signalQueueIds)
+      await milo!.tasks.getBacklog(signalQueueIds)
       expect(mockMilo.tasks.getBacklog).toHaveBeenCalledWith(signalQueueIds)
     })
 
@@ -221,181 +222,181 @@ describe('API Contract Tests', () => {
         status: 'pending' as const,
         goalId: null
       }
-      await window.milo!.tasks.create(taskData)
+      await milo!.tasks.create(taskData)
       expect(mockMilo.tasks.create).toHaveBeenCalledWith(taskData)
     })
 
     it('update should call tasks.update(id, updates)', async () => {
       const updates = { status: 'completed' as const }
-      await window.milo!.tasks.update('task-123', updates)
+      await milo!.tasks.update('task-123', updates)
       expect(mockMilo.tasks.update).toHaveBeenCalledWith('task-123', updates)
     })
 
     it('start should call tasks.start(id)', async () => {
-      await window.milo!.tasks.start('task-123')
+      await milo!.tasks.start('task-123')
       expect(mockMilo.tasks.start).toHaveBeenCalledWith('task-123')
     })
 
     it('complete should call tasks.complete(id)', async () => {
-      await window.milo!.tasks.complete('task-123')
+      await milo!.tasks.complete('task-123')
       expect(mockMilo.tasks.complete).toHaveBeenCalledWith('task-123')
     })
 
     it('defer should call tasks.defer(id)', async () => {
-      await window.milo!.tasks.defer('task-123')
+      await milo!.tasks.defer('task-123')
       expect(mockMilo.tasks.defer).toHaveBeenCalledWith('task-123')
     })
 
     it('recordWork should call tasks.recordWork(id)', async () => {
-      await window.milo!.tasks.recordWork('task-123')
+      await milo!.tasks.recordWork('task-123')
       expect(mockMilo.tasks.recordWork).toHaveBeenCalledWith('task-123')
     })
 
     it('delete should call tasks.delete(id)', async () => {
-      await window.milo!.tasks.delete('task-123')
+      await milo!.tasks.delete('task-123')
       expect(mockMilo.tasks.delete).toHaveBeenCalledWith('task-123')
     })
   })
 
   describe('Categories API Contract', () => {
     it('getAll should call categories.getAll()', async () => {
-      await window.milo!.categories.getAll()
+      await milo!.categories.getAll()
       expect(mockMilo.categories.getAll).toHaveBeenCalledTimes(1)
     })
 
     it('getActive should call categories.getActive()', async () => {
-      await window.milo!.categories.getActive()
+      await milo!.categories.getActive()
       expect(mockMilo.categories.getActive).toHaveBeenCalledTimes(1)
     })
 
     it('create should call categories.create(categoryData)', async () => {
       const categoryData = { name: 'New Project', color: '#FF0000', sortOrder: 0, isActive: true }
-      await window.milo!.categories.create(categoryData)
+      await milo!.categories.create(categoryData)
       expect(mockMilo.categories.create).toHaveBeenCalledWith(categoryData)
     })
 
     it('update should call categories.update(id, updates)', async () => {
       const updates = { name: 'Renamed Project' }
-      await window.milo!.categories.update('cat-123', updates)
+      await milo!.categories.update('cat-123', updates)
       expect(mockMilo.categories.update).toHaveBeenCalledWith('cat-123', updates)
     })
 
     it('delete should call categories.delete(id)', async () => {
-      await window.milo!.categories.delete('cat-123')
+      await milo!.categories.delete('cat-123')
       expect(mockMilo.categories.delete).toHaveBeenCalledWith('cat-123')
     })
 
     it('reorder should call categories.reorder(orderedIds)', async () => {
       const orderedIds = ['cat-3', 'cat-1', 'cat-2']
-      await window.milo!.categories.reorder(orderedIds)
+      await milo!.categories.reorder(orderedIds)
       expect(mockMilo.categories.reorder).toHaveBeenCalledWith(orderedIds)
     })
   })
 
   describe('Chat API Contract', () => {
     it('getAllConversations should call chat.getAllConversations()', async () => {
-      await window.milo!.chat.getAllConversations()
+      await milo!.chat.getAllConversations()
       expect(mockMilo.chat.getAllConversations).toHaveBeenCalledTimes(1)
     })
 
     it('getConversation should call chat.getConversation(id)', async () => {
-      await window.milo!.chat.getConversation('conv-123')
+      await milo!.chat.getConversation('conv-123')
       expect(mockMilo.chat.getConversation).toHaveBeenCalledWith('conv-123')
     })
 
     it('createConversation should call chat.createConversation(title?)', async () => {
-      await window.milo!.chat.createConversation('My Chat')
+      await milo!.chat.createConversation('My Chat')
       expect(mockMilo.chat.createConversation).toHaveBeenCalledWith('My Chat')
     })
 
     it('createConversation without title should work', async () => {
-      await window.milo!.chat.createConversation()
+      await milo!.chat.createConversation()
       expect(mockMilo.chat.createConversation).toHaveBeenCalledWith()
     })
 
     it('updateConversationTitle should call chat.updateConversationTitle(id, title)', async () => {
-      await window.milo!.chat.updateConversationTitle('conv-123', 'New Title')
+      await milo!.chat.updateConversationTitle('conv-123', 'New Title')
       expect(mockMilo.chat.updateConversationTitle).toHaveBeenCalledWith('conv-123', 'New Title')
     })
 
     it('deleteConversation should call chat.deleteConversation(id)', async () => {
-      await window.milo!.chat.deleteConversation('conv-123')
+      await milo!.chat.deleteConversation('conv-123')
       expect(mockMilo.chat.deleteConversation).toHaveBeenCalledWith('conv-123')
     })
 
     it('getMessages should call chat.getMessages(conversationId)', async () => {
-      await window.milo!.chat.getMessages('conv-123')
+      await milo!.chat.getMessages('conv-123')
       expect(mockMilo.chat.getMessages).toHaveBeenCalledWith('conv-123')
     })
 
     it('addMessage should call chat.addMessage(conversationId, role, content)', async () => {
-      await window.milo!.chat.addMessage('conv-123', 'user', 'Hello!')
+      await milo!.chat.addMessage('conv-123', 'user', 'Hello!')
       expect(mockMilo.chat.addMessage).toHaveBeenCalledWith('conv-123', 'user', 'Hello!')
     })
 
     it('deleteMessage should call chat.deleteMessage(id)', async () => {
-      await window.milo!.chat.deleteMessage('msg-123')
+      await milo!.chat.deleteMessage('msg-123')
       expect(mockMilo.chat.deleteMessage).toHaveBeenCalledWith('msg-123')
     })
 
     it('autoTitleConversation should call chat.autoTitleConversation(id)', async () => {
-      await window.milo!.chat.autoTitleConversation('conv-123')
+      await milo!.chat.autoTitleConversation('conv-123')
       expect(mockMilo.chat.autoTitleConversation).toHaveBeenCalledWith('conv-123')
     })
   })
 
   describe('Settings API Contract', () => {
     it('get should call settings.get()', async () => {
-      await window.milo!.settings.get()
+      await milo!.settings.get()
       expect(mockMilo.settings.get).toHaveBeenCalledTimes(1)
     })
 
     it('getApiKey should call settings.getApiKey()', async () => {
-      await window.milo!.settings.getApiKey()
+      await milo!.settings.getApiKey()
       expect(mockMilo.settings.getApiKey).toHaveBeenCalledTimes(1)
     })
 
     it('saveApiKey should call settings.saveApiKey(apiKey)', async () => {
-      await window.milo!.settings.saveApiKey('sk-ant-test-key')
+      await milo!.settings.saveApiKey('sk-ant-test-key')
       expect(mockMilo.settings.saveApiKey).toHaveBeenCalledWith('sk-ant-test-key')
     })
 
     it('saveApiKey with null should work', async () => {
-      await window.milo!.settings.saveApiKey(null)
+      await milo!.settings.saveApiKey(null)
       expect(mockMilo.settings.saveApiKey).toHaveBeenCalledWith(null)
     })
 
     it('getRefillMode should call settings.getRefillMode()', async () => {
-      await window.milo!.settings.getRefillMode()
+      await milo!.settings.getRefillMode()
       expect(mockMilo.settings.getRefillMode).toHaveBeenCalledTimes(1)
     })
 
     it('saveRefillMode should call settings.saveRefillMode(mode)', async () => {
-      await window.milo!.settings.saveRefillMode('daily_reset')
+      await milo!.settings.saveRefillMode('daily_reset')
       expect(mockMilo.settings.saveRefillMode).toHaveBeenCalledWith('daily_reset')
     })
 
     it('update should call settings.update(updates)', async () => {
       const updates = { alwaysOnTop: true, startMinimized: false }
-      await window.milo!.settings.update(updates)
+      await milo!.settings.update(updates)
       expect(mockMilo.settings.update).toHaveBeenCalledWith(updates)
     })
   })
 
   describe('AI API Contract', () => {
     it('initialize should call ai.initialize(apiKey)', async () => {
-      await window.milo!.ai.initialize('sk-ant-test-key')
+      await milo!.ai.initialize('sk-ant-test-key')
       expect(mockMilo.ai.initialize).toHaveBeenCalledWith('sk-ant-test-key')
     })
 
     it('isInitialized should call ai.isInitialized()', async () => {
-      await window.milo!.ai.isInitialized()
+      await milo!.ai.isInitialized()
       expect(mockMilo.ai.isInitialized).toHaveBeenCalledTimes(1)
     })
 
     it('chat should call ai.chat(message, conversationHistory)', async () => {
       const history = [{ role: 'user' as const, content: 'Previous message' }]
-      await window.milo!.ai.chat('Hello', history)
+      await milo!.ai.chat('Hello', history)
       expect(mockMilo.ai.chat).toHaveBeenCalledWith('Hello', history)
     })
   })
@@ -407,7 +408,7 @@ describe('API Return Value Contract', () => {
   beforeEach(() => {
     mockMilo = createMockMiloAPI()
     // @ts-ignore
-    window.milo = mockMilo
+    milo = mockMilo
   })
 
   afterEach(() => {
@@ -420,7 +421,7 @@ describe('API Return Value Contract', () => {
       { id: 'g2', title: 'Goal 2', timeframe: 'weekly' },
     ])
 
-    const result = await window.milo!.goals.getAll()
+    const result = await milo!.goals.getAll()
     expect(Array.isArray(result)).toBe(true)
     expect(result).toHaveLength(2)
     expect(result[0]).toHaveProperty('id')
@@ -433,11 +434,11 @@ describe('API Return Value Contract', () => {
       .mockResolvedValueOnce({ id: 'g1', title: 'Found Goal', timeframe: 'monthly' })
       .mockResolvedValueOnce(null)
 
-    const found = await window.milo!.goals.getById('g1')
+    const found = await milo!.goals.getById('g1')
     expect(found).not.toBeNull()
     expect(found?.id).toBe('g1')
 
-    const notFound = await window.milo!.goals.getById('non-existent')
+    const notFound = await milo!.goals.getById('non-existent')
     expect(notFound).toBeNull()
   })
 
@@ -446,7 +447,7 @@ describe('API Return Value Contract', () => {
       { id: 't1', title: 'Priority Task', priority: 5 },
     ])
 
-    const result = await window.milo!.tasks.getSignalQueue(5)
+    const result = await milo!.tasks.getSignalQueue(5)
     expect(Array.isArray(result)).toBe(true)
   })
 
@@ -459,7 +460,7 @@ describe('API Return Value Contract', () => {
       isActive: true,
     })
 
-    const result = await window.milo!.categories.create({ name: 'Test Project', color: '#00FF00', sortOrder: 0, isActive: true })
+    const result = await milo!.categories.create({ name: 'Test Project', color: '#00FF00', sortOrder: 0, isActive: true })
     expect(result).toHaveProperty('id')
     expect(result?.name).toBe('Test Project')
     expect(result?.color).toBe('#00FF00')
@@ -474,7 +475,7 @@ describe('API Return Value Contract', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     })
 
-    const result = await window.milo!.chat.addMessage('conv-1', 'user', 'Test message')
+    const result = await milo!.chat.addMessage('conv-1', 'user', 'Test message')
     expect(result).toHaveProperty('id')
     expect(result.conversationId).toBe('conv-1')
     expect(result.role).toBe('user')
@@ -499,7 +500,7 @@ describe('API Return Value Contract', () => {
       showInDock: true,
     })
 
-    const result = await window.milo!.settings.get()
+    const result = await milo!.settings.get()
     expect(result).toHaveProperty('refillMode')
     expect(result).toHaveProperty('workStartTime')
     expect(result).toHaveProperty('workEndTime')

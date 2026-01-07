@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import {
   Settings,
@@ -15,9 +16,17 @@ import {
   RefreshCw,
   Pause,
   Shield,
+  Volume2,
+  Play,
+  Download,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useModal } from '@/contexts/ModalContext'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 import type { UserSettings } from '@/types'
 
 interface SettingsPageProps {
@@ -40,8 +49,8 @@ const AnalyticsToggle: React.FC = () => {
     const loadAnalyticsState = async () => {
       try {
         const [enabled, available] = await Promise.all([
-          window.milo.analytics.isEnabled(),
-          window.milo.analytics.isAvailable(),
+          milo.analytics.isEnabled(),
+          milo.analytics.isAvailable(),
         ])
         setIsEnabled(enabled)
         setIsAvailable(available)
@@ -57,10 +66,10 @@ const AnalyticsToggle: React.FC = () => {
   const handleToggle = async () => {
     try {
       if (isEnabled) {
-        await window.milo.analytics.disable()
+        await milo.analytics.disable()
         setIsEnabled(false)
       } else {
-        await window.milo.analytics.enable()
+        await milo.analytics.enable()
         setIsEnabled(true)
       }
     } catch (error) {
@@ -104,6 +113,141 @@ const AnalyticsToggle: React.FC = () => {
 }
 
 /**
+ * UpdateChecker - Check for app updates from GitHub Releases
+ */
+interface UpdateInfo {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string
+  releaseUrl: string
+  downloadUrl: string
+  releaseNotes: string
+  publishedAt: string
+}
+
+const UpdateChecker: React.FC = () => {
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastChecked, setLastChecked] = useState<Date | null>(null)
+
+  const checkForUpdates = async () => {
+    setIsChecking(true)
+    setError(null)
+    try {
+      const info = await milo.updates.check()
+      setUpdateInfo(info)
+      setLastChecked(new Date())
+    } catch (err) {
+      setError('Failed to check for updates')
+      console.error('Update check failed:', err)
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  // Check on mount
+  useEffect(() => {
+    checkForUpdates()
+  }, [])
+
+  const openDownload = () => {
+    if (updateInfo?.downloadUrl) {
+      window.open(updateInfo.downloadUrl, '_blank')
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Current version & check button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm text-pipboy-green">App Version</span>
+          <p className="text-xs text-pipboy-green-dim font-mono">
+            v{updateInfo?.currentVersion || '...'}
+          </p>
+        </div>
+        <button
+          onClick={checkForUpdates}
+          disabled={isChecking}
+          className={`
+            flex items-center gap-1.5 px-3 py-1.5 rounded-sm
+            text-xs border transition-all
+            ${isChecking
+              ? 'border-pipboy-border text-pipboy-green-dim cursor-wait'
+              : 'border-pipboy-border hover:border-pipboy-green/50 text-pipboy-green'
+            }
+          `}
+        >
+          {isChecking ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              <span>Checking...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw size={12} />
+              <span>Check</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Update status */}
+      {error && (
+        <div className="flex items-center gap-2 p-2 rounded-sm bg-red-500/10 border border-red-500/30">
+          <AlertCircle size={14} className="text-red-400" />
+          <span className="text-xs text-red-400">{error}</span>
+        </div>
+      )}
+
+      {updateInfo && !error && (
+        <>
+          {updateInfo.hasUpdate ? (
+            <div className="p-3 rounded-sm bg-pipboy-green/10 border border-pipboy-green/30 space-y-2">
+              <div className="flex items-center gap-2">
+                <Download size={14} className="text-pipboy-green" />
+                <span className="text-sm text-pipboy-green font-medium">
+                  Update Available: v{updateInfo.latestVersion}
+                </span>
+              </div>
+              <p className="text-[10px] text-pipboy-green-dim/80">
+                {updateInfo.releaseNotes?.slice(0, 150)}
+                {updateInfo.releaseNotes?.length > 150 ? '...' : ''}
+              </p>
+              <button
+                onClick={openDownload}
+                className="
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-sm
+                  text-xs bg-pipboy-green/20 border border-pipboy-green
+                  text-pipboy-green hover:bg-pipboy-green/30 transition-all
+                "
+              >
+                <ExternalLink size={12} />
+                <span>Download Update</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-2 rounded-sm bg-pipboy-surface border border-pipboy-border">
+              <CheckCircle size={14} className="text-pipboy-green" />
+              <span className="text-xs text-pipboy-green-dim">
+                You're on the latest version
+              </span>
+            </div>
+          )}
+        </>
+      )}
+
+      {lastChecked && (
+        <p className="text-[10px] text-pipboy-green-dim/40 text-right">
+          Last checked: {lastChecked.toLocaleTimeString()}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
  * SettingsPage - Comprehensive settings management
  *
  * Organized sections:
@@ -122,6 +266,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
 
   // Local state for form fields
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings)
+
+  // Initialize text-to-speech with current settings
+  const { voices, speak } = useTextToSpeech({
+    voiceId: localSettings.voiceId,
+    rate: localSettings.voiceRate,
+  })
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -148,6 +298,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       ? currentDays.filter((d) => d !== day)
       : [...currentDays, day].sort()
     handleChange('workDays', newDays)
+  }
+
+  // Handle voice test
+  const handleTestVoice = () => {
+    speak('Hello, I am MILO. Your Mission Intelligence Life Operator.')
   }
 
   // Save settings
@@ -181,6 +336,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       startMinimized: false,
       showInDock: true,
       refillMode: 'endless',
+      // Voice output
+      voiceEnabled: true,
+      voiceId: '',
+      voiceRate: 1.0,
+      voiceMuted: false,
     }
     setLocalSettings(defaults)
     setHasChanges(true)
@@ -293,10 +453,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             className={`
               flex items-center gap-1.5 px-3 py-1.5 rounded-sm
               text-xs transition-all
-              ${
-                hasChanges
-                  ? 'bg-pipboy-green/20 border border-pipboy-green text-pipboy-green hover:bg-pipboy-green/30'
-                  : 'border border-pipboy-border text-pipboy-green-dim cursor-not-allowed'
+              ${hasChanges
+                ? 'bg-pipboy-green/20 border border-pipboy-green text-pipboy-green hover:bg-pipboy-green/30'
+                : 'border border-pipboy-border text-pipboy-green-dim cursor-not-allowed'
               }
               ${saveSuccess ? 'bg-green-500/20 border-green-500' : ''}
             `}
@@ -337,10 +496,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     className={`
                       px-2 py-1 text-[10px] rounded-sm
                       border transition-all
-                      ${
-                        localSettings.workDays.includes(index)
-                          ? 'bg-pipboy-green/20 border-pipboy-green/50 text-pipboy-green'
-                          : 'bg-pipboy-surface border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30'
+                      ${localSettings.workDays.includes(index)
+                        ? 'bg-pipboy-green/20 border-pipboy-green/50 text-pipboy-green'
+                        : 'bg-pipboy-surface border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30'
                       }
                     `}
                   >
@@ -468,10 +626,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-sm
                   text-[10px] border transition-all
-                  ${
-                    localSettings.refillMode === 'endless'
-                      ? 'bg-pipboy-green/10 text-pipboy-green border-pipboy-green/50'
-                      : 'bg-pipboy-surface text-pipboy-green-dim border-pipboy-border hover:border-pipboy-green/30'
+                  ${localSettings.refillMode === 'endless'
+                    ? 'bg-pipboy-green/10 text-pipboy-green border-pipboy-green/50'
+                    : 'bg-pipboy-surface text-pipboy-green-dim border-pipboy-border hover:border-pipboy-green/30'
                   }
                 `}
               >
@@ -516,6 +673,96 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
               label="Show in Dock"
               description="Display MILO icon in the macOS dock"
             />
+          </div>
+        </section>
+
+        {/* Voice Output Section */}
+        <section>
+          <SectionHeader icon={<Volume2 size={14} />} title="Voice Output" />
+          <div className="space-y-3 pl-1">
+            <Toggle
+              enabled={localSettings.voiceEnabled}
+              onChange={(v) => handleChange('voiceEnabled', v)}
+              label="Voice Output"
+              description="MILO speaks AI responses aloud"
+            />
+
+            {localSettings.voiceEnabled && (
+              <>
+                {/* Voice Selector */}
+                <div className="flex flex-col gap-2 pt-2">
+                  <label className="text-xs text-pipboy-green-dim">Voice</label>
+                  <select
+                    value={localSettings.voiceId || ''}
+                    onChange={(e) => handleChange('voiceId', e.target.value)}
+                    className="
+                      px-3 py-2 rounded-sm
+                      bg-pipboy-surface border border-pipboy-border
+                      text-pipboy-green text-sm
+                      focus:outline-none focus:border-pipboy-green/50
+                      cursor-pointer
+                    "
+                  >
+                    <option value="">Default Voice</option>
+                    {voices.map((voice) => (
+                      <option key={voice.voiceURI} value={voice.voiceURI}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Speed Slider */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-pipboy-green-dim">Speed</label>
+                    <span className="text-xs text-pipboy-green font-mono">
+                      {localSettings.voiceRate.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={localSettings.voiceRate}
+                    onChange={(e) => handleChange('voiceRate', parseFloat(e.target.value))}
+                    className="
+                      w-full h-2 rounded-sm
+                      bg-pipboy-surface border border-pipboy-border
+                      cursor-pointer
+                      appearance-none
+                      [&::-webkit-slider-thumb]:appearance-none
+                      [&::-webkit-slider-thumb]:w-4
+                      [&::-webkit-slider-thumb]:h-4
+                      [&::-webkit-slider-thumb]:rounded-full
+                      [&::-webkit-slider-thumb]:bg-pipboy-green
+                      [&::-webkit-slider-thumb]:cursor-pointer
+                      [&::-moz-range-thumb]:w-4
+                      [&::-moz-range-thumb]:h-4
+                      [&::-moz-range-thumb]:rounded-full
+                      [&::-moz-range-thumb]:bg-pipboy-green
+                      [&::-moz-range-thumb]:border-0
+                      [&::-moz-range-thumb]:cursor-pointer
+                    "
+                  />
+                </div>
+
+                {/* Test Button */}
+                <button
+                  onClick={handleTestVoice}
+                  className="
+                    flex items-center justify-center gap-2 px-3 py-2 rounded-sm
+                    bg-pipboy-surface border border-pipboy-border
+                    hover:border-pipboy-green/50 hover:bg-pipboy-green/5
+                    text-pipboy-green text-sm transition-all
+                  "
+                >
+                  <Play size={14} />
+                  <span>Test Voice</span>
+                </button>
+              </>
+            )}
           </div>
         </section>
 
@@ -577,10 +824,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           </div>
         </section>
 
+        {/* Updates Section */}
+        <section>
+          <SectionHeader icon={<Download size={14} />} title="Updates" />
+          <div className="pl-1">
+            <UpdateChecker />
+          </div>
+        </section>
+
         {/* Version info at bottom */}
         <div className="pt-4 border-t border-pipboy-border/30 text-center">
           <p className="text-[10px] text-pipboy-green-dim/40">
-            MILO v0.3.0 • Made with 💚 by ID8Labs
+            Made with 💚 by ID8Labs
           </p>
         </div>
       </div>

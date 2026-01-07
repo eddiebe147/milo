@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type {
   MorningBriefingInput,
@@ -72,7 +73,7 @@ export const useAIStore = create<AIState>((set, get) => ({
   initialize: async (apiKey: string) => {
     set({ isInitializing: true, error: null })
     try {
-      const result = await window.milo?.ai.initialize(apiKey)
+      const result = await milo?.ai.initialize(apiKey)
       set({ isInitialized: result, isInitializing: false })
       return result
     } catch (error) {
@@ -85,7 +86,7 @@ export const useAIStore = create<AIState>((set, get) => ({
   // Check if AI is ready
   checkInitialized: async () => {
     try {
-      const result = await window.milo?.ai.isInitialized()
+      const result = await milo?.ai.isInitialized()
       set({ isInitialized: result })
       return result
     } catch {
@@ -146,7 +147,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ isGenerating: true, error: null })
 
     try {
-      const result = await window.milo?.ai.morningBriefing(input)
+      const result = await milo?.ai.morningBriefing(input)
       if (result) {
         addMessage('assistant', result.briefing, 'briefing', result)
         set({ lastBriefing: result, isGenerating: false })
@@ -168,7 +169,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ isGenerating: true, error: null })
 
     try {
-      const result = await window.milo?.ai.eveningReview(input)
+      const result = await milo?.ai.eveningReview(input)
       if (result) {
         addMessage('assistant', result.analysis, 'review', result)
         set({ lastReview: result, isGenerating: false })
@@ -192,7 +193,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     addMessage('user', text)
 
     try {
-      const result = await window.milo?.ai.parseTasks(text)
+      const result = await milo?.ai.parseTasks(text)
       if (result) {
         const taskCount = result.tasks.length
         const summary = taskCount > 0
@@ -217,7 +218,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ isGenerating: true, error: null })
 
     try {
-      const result = await window.milo?.ai.generateNudge(driftMinutes, currentApp)
+      const result = await milo?.ai.generateNudge(driftMinutes, currentApp)
       set({ isGenerating: false })
       return result || null
     } catch (error) {

@@ -15,3 +15,5 @@ export {
   isAnalyticsAvailable,
 } from './analytics'
 export type { AnalyticsEvent, AnalyticsProperties } from './analytics'
+export { checkForUpdates, getCurrentVersion } from './UpdateChecker'
+export type { UpdateInfo } from './UpdateChecker'

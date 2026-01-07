@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { Category } from '../types'
 
@@ -25,7 +26,7 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
   fetchCategories: async () => {
     set({ isLoading: true, error: null })
     try {
-      const categories = await window.milo.categories.getActive()
+      const categories = await milo.categories.getActive()
       set({ categories, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -38,7 +39,7 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
 
   createCategory: async (category) => {
     try {
-      const newCategory = await window.milo.categories.create(category)
+      const newCategory = await milo.categories.create(category)
       if (newCategory) {
         set((state) => ({ categories: [...state.categories, newCategory] }))
       }
@@ -51,7 +52,7 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
 
   updateCategory: async (id, updates) => {
     try {
-      const updatedCategory = await window.milo.categories.update(id, updates)
+      const updatedCategory = await milo.categories.update(id, updates)
       if (updatedCategory) {
         set((state) => ({
           categories: state.categories.map((c) => (c.id === id ? updatedCategory : c)),
@@ -66,7 +67,7 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
 
   deleteCategory: async (id) => {
     try {
-      const success = await window.milo.categories.delete(id)
+      const success = await milo.categories.delete(id)
       if (success) {
         set((state) => ({
           categories: state.categories.filter((c) => c.id !== id),
@@ -83,9 +84,9 @@ export const useCategoriesStore = create<CategoriesState>((set) => ({
 
   reorderCategories: async (orderedIds) => {
     try {
-      await window.milo.categories.reorder(orderedIds)
+      await milo.categories.reorder(orderedIds)
       // Re-fetch to get updated sort orders
-      const categories = await window.milo.categories.getActive()
+      const categories = await milo.categories.getActive()
       set({ categories })
     } catch (error) {
       set({ error: (error as Error).message })

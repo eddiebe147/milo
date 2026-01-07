@@ -1,7 +1,12 @@
 import { getDatabase } from '../services/database'
 
+// AI Provider type
+export type AIProviderType = 'claude' | 'openai'
+
 export interface StoredSettings {
   apiKey: string | null
+  apiProvider: AIProviderType
+  apiModel: string | null
   refillMode: 'endless' | 'daily_reset'
   workStartTime: string
   workEndTime: string
@@ -39,6 +44,8 @@ export interface ThemeColors {
 function rowToSettings(row: Record<string, unknown>): StoredSettings {
   return {
     apiKey: row.api_key as string | null,
+    apiProvider: (row.api_provider as AIProviderType) || 'claude',
+    apiModel: row.api_model as string | null,
     refillMode: (row.refill_mode as string) === 'daily_reset' ? 'daily_reset' : 'endless',
     workStartTime: row.work_start_time as string,
     workEndTime: row.work_end_time as string,
@@ -76,6 +83,67 @@ export const settingsRepository = {
   saveApiKey(apiKey: string | null): void {
     const db = getDatabase()
     db.prepare('UPDATE user_settings SET api_key = ? WHERE id = 1').run(apiKey)
+  },
+
+  // Get AI provider
+  getApiProvider(): AIProviderType {
+    const db = getDatabase()
+    const row = db.prepare('SELECT api_provider FROM user_settings WHERE id = 1').get() as Record<string, unknown>
+    return (row?.api_provider as AIProviderType) || 'claude'
+  },
+
+  // Save AI provider
+  saveApiProvider(provider: AIProviderType): void {
+    const db = getDatabase()
+    db.prepare('UPDATE user_settings SET api_provider = ? WHERE id = 1').run(provider)
+  },
+
+  // Get AI model
+  getApiModel(): string | null {
+    const db = getDatabase()
+    const row = db.prepare('SELECT api_model FROM user_settings WHERE id = 1').get() as Record<string, unknown>
+    return row?.api_model as string | null
+  },
+
+  // Save AI model
+  saveApiModel(model: string | null): void {
+    const db = getDatabase()
+    db.prepare('UPDATE user_settings SET api_model = ? WHERE id = 1').run(model)
+  },
+
+  // Get all AI settings at once
+  getAiSettings(): { apiKey: string | null; apiProvider: AIProviderType; apiModel: string | null } {
+    const db = getDatabase()
+    const row = db.prepare('SELECT api_key, api_provider, api_model FROM user_settings WHERE id = 1').get() as Record<string, unknown>
+    return {
+      apiKey: row?.api_key as string | null,
+      apiProvider: (row?.api_provider as AIProviderType) || 'claude',
+      apiModel: row?.api_model as string | null,
+    }
+  },
+
+  // Save all AI settings at once
+  saveAiSettings(settings: { apiKey?: string | null; apiProvider?: AIProviderType; apiModel?: string | null }): void {
+    const db = getDatabase()
+    const setClauses: string[] = []
+    const values: unknown[] = []
+
+    if (settings.apiKey !== undefined) {
+      setClauses.push('api_key = ?')
+      values.push(settings.apiKey)
+    }
+    if (settings.apiProvider !== undefined) {
+      setClauses.push('api_provider = ?')
+      values.push(settings.apiProvider)
+    }
+    if (settings.apiModel !== undefined) {
+      setClauses.push('api_model = ?')
+      values.push(settings.apiModel)
+    }
+
+    if (setClauses.length > 0) {
+      db.prepare(`UPDATE user_settings SET ${setClauses.join(', ')} WHERE id = 1`).run(...values)
+    }
   },
 
   // Get refill mode

@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import { useTasksStore } from './tasksStore'
 
@@ -93,7 +94,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Load all conversations
   loadConversations: async () => {
     try {
-      const conversations = await window.milo?.chat.getAllConversations()
+      const conversations = await milo?.chat.getAllConversations()
       if (conversations) {
         set({ conversations })
       }
@@ -106,7 +107,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadConversation: async (id: string) => {
     set({ isLoading: true, error: null })
     try {
-      const messages = await window.milo?.chat.getMessages(id)
+      const messages = await milo?.chat.getMessages(id)
       if (messages) {
         set({
           currentConversationId: id,
@@ -137,7 +138,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Delete a conversation
   deleteConversation: async (id: string) => {
     try {
-      await window.milo?.chat.deleteConversation(id)
+      await milo?.chat.deleteConversation(id)
       const { currentConversationId, conversations } = get()
 
       // Remove from local list
@@ -167,7 +168,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Create a new conversation if needed
     if (!currentConversationId) {
       try {
-        const conversation = await window.milo?.chat.createConversation()
+        const conversation = await milo?.chat.createConversation()
         if (conversation) {
           currentConversationId = conversation.id
           set({ currentConversationId })
@@ -186,7 +187,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Save user message to DB and add to local state
     try {
-      const userDbMsg = await window.milo?.chat.addMessage(
+      const userDbMsg = await milo?.chat.addMessage(
         currentConversationId,
         'user',
         trimmedMessage
@@ -213,11 +214,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }))
 
       // Call the AI chat API
-      const response = await window.milo?.ai.chat(trimmedMessage, conversationHistory)
+      const response = await milo?.ai.chat(trimmedMessage, conversationHistory)
 
       if (response) {
         // Save assistant message to DB
-        const assistantDbMsg = await window.milo?.chat.addMessage(
+        const assistantDbMsg = await milo?.chat.addMessage(
           currentConversationId,
           'assistant',
           response
@@ -246,7 +247,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const { messages: updatedMessages } = get()
         if (updatedMessages.length === 2) {
           try {
-            const updatedConversation = await window.milo?.chat.autoTitleConversation(
+            const updatedConversation = await milo?.chat.autoTitleConversation(
               currentConversationId
             )
             if (updatedConversation) {

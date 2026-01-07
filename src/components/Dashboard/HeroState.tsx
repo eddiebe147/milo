@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import { Pause, Play, Loader2 } from 'lucide-react'
 import { useActivityStore } from '@/stores'
@@ -49,7 +50,7 @@ export const HeroState: React.FC = () => {
 
   // Listen for state changes from main process
   useEffect(() => {
-    const unsubscribe = window.milo?.events.onActivityStateChanged((state) => {
+    const unsubscribe = milo?.events.onActivityStateChanged((state) => {
       setCurrentState(state.state)
       setCurrentApp(state.appName)
       if (state.stateChanged) {

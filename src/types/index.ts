@@ -140,6 +140,12 @@ export interface UserSettings {
 
   // Signal Queue behavior
   refillMode: 'endless' | 'daily_reset'
+
+  // Voice output
+  voiceEnabled: boolean     // Whether TTS is enabled
+  voiceMuted: boolean       // Quick mute toggle (silences TTS without disabling)
+  voiceId: string          // Selected voice URI (empty = system default)
+  voiceRate: number        // Speech rate 0.5-2.0
 }
 
 // State for real-time activity monitoring (matches ActivityMonitor.getStatus())

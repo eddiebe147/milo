@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import { Activity, Play, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -52,7 +53,7 @@ export const StateIndicator: React.FC = () => {
 
   // Listen for state changes from main process
   useEffect(() => {
-    const unsubscribe = window.milo?.events.onActivityStateChanged((state) => {
+    const unsubscribe = milo?.events.onActivityStateChanged((state) => {
       setCurrentState(state.state)
       setCurrentApp(state.appName)
       if (state.stateChanged) {

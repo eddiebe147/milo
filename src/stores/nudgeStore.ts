@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { NudgeEvent, NudgeConfig, DriftStatus } from '@/types/milo-api'
 
@@ -91,7 +92,7 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   fetchConfig: async () => {
     set({ isLoadingConfig: true })
     try {
-      const config = await window.milo?.nudge.getConfig()
+      const config = await milo?.nudge.getConfig()
       set({ config, isLoadingConfig: false })
     } catch (error) {
       console.error('[NudgeStore] Failed to fetch config:', error)
@@ -102,7 +103,7 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   // Update configuration
   updateConfig: async (updates: Partial<NudgeConfig>) => {
     try {
-      await window.milo?.nudge.setConfig(updates)
+      await milo?.nudge.setConfig(updates)
       // Refresh config after update
       await get().fetchConfig()
     } catch (error) {
@@ -113,7 +114,7 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   // Fetch current drift status
   fetchDriftStatus: async () => {
     try {
-      const status = await window.milo?.nudge.getDriftStatus()
+      const status = await milo?.nudge.getDriftStatus()
       set({ driftStatus: status || null })
     } catch (error) {
       console.error('[NudgeStore] Failed to fetch drift status:', error)
@@ -122,12 +123,12 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
 
   // Set up event listener for nudges from main process
   setupEventListener: () => {
-    if (!window.milo?.events.onNudgeTriggered) {
+    if (!milo?.events.onNudgeTriggered) {
       console.warn('[NudgeStore] Nudge event listener not available')
       return () => {}
     }
 
-    const cleanup = window.milo.events.onNudgeTriggered((nudge: NudgeEvent) => {
+    const cleanup = milo.events.onNudgeTriggered((nudge: NudgeEvent) => {
       console.log('[NudgeStore] Received nudge:', nudge)
       get().addNudge(nudge)
     })

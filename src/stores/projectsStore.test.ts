@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useProjectsStore } from './projectsStore'
 import type { Project } from './projectsStore'
@@ -48,9 +49,9 @@ describe('projectsStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo.categories API (projectsStore wraps categories)
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo.categories API (projectsStore wraps categories)
+    milo = {
+      ...milo,
       categories: {
         getActive: vi.fn().mockResolvedValue(mockProjects),
         create: vi.fn().mockResolvedValue(mockProject),
@@ -105,7 +106,7 @@ describe('projectsStore', () => {
 
       const state = useProjectsStore.getState()
       expect(state.projects).toEqual(mockProjects)
-      expect(window.milo.categories.getActive).toHaveBeenCalledTimes(1)
+      expect(milo.categories.getActive).toHaveBeenCalledTimes(1)
     })
 
     it('clears error on successful fetch', async () => {
@@ -121,7 +122,7 @@ describe('projectsStore', () => {
 
     it('handles fetch errors', async () => {
       const errorMessage = 'Failed to fetch projects'
-      window.milo.categories.getActive = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.categories.getActive = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useProjectsStore.getState()
       await store.fetchProjects()
@@ -135,7 +136,7 @@ describe('projectsStore', () => {
       // Pre-populate with existing projects
       useProjectsStore.setState({ projects: mockProjects })
 
-      window.milo.categories.getActive = vi.fn().mockRejectedValue(new Error('Network error'))
+      milo.categories.getActive = vi.fn().mockRejectedValue(new Error('Network error'))
 
       const store = useProjectsStore.getState()
       await store.fetchProjects()
@@ -188,7 +189,7 @@ describe('projectsStore', () => {
       const result = await store.createProject(newProjectData)
 
       expect(result).toEqual(mockProject)
-      expect(window.milo.categories.create).toHaveBeenCalledWith(newProjectData)
+      expect(milo.categories.create).toHaveBeenCalledWith(newProjectData)
       expect(useProjectsStore.getState().projects).toContain(mockProject)
     })
 
@@ -201,7 +202,7 @@ describe('projectsStore', () => {
         id: 'project-new',
         name: 'New Project',
       }
-      window.milo.categories.create = vi.fn().mockResolvedValue(newProject)
+      milo.categories.create = vi.fn().mockResolvedValue(newProject)
 
       const store = useProjectsStore.getState()
       await store.createProject({
@@ -218,7 +219,7 @@ describe('projectsStore', () => {
 
     it('handles creation errors', async () => {
       const errorMessage = 'Creation failed'
-      window.milo.categories.create = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.categories.create = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useProjectsStore.getState()
       const result = await store.createProject({
@@ -233,7 +234,7 @@ describe('projectsStore', () => {
     })
 
     it('does not add project to state if API returns null', async () => {
-      window.milo.categories.create = vi.fn().mockResolvedValue(null)
+      milo.categories.create = vi.fn().mockResolvedValue(null)
 
       const store = useProjectsStore.getState()
       const result = await store.createProject({
@@ -255,19 +256,19 @@ describe('projectsStore', () => {
 
     it('updates project in state', async () => {
       const updatedProject = { ...mockProject, name: 'Updated Project' }
-      window.milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
+      milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
 
       const store = useProjectsStore.getState()
       const result = await store.updateProject('project-1', { name: 'Updated Project' })
 
       expect(result).toEqual(updatedProject)
-      expect(window.milo.categories.update).toHaveBeenCalledWith('project-1', { name: 'Updated Project' })
+      expect(milo.categories.update).toHaveBeenCalledWith('project-1', { name: 'Updated Project' })
       expect(useProjectsStore.getState().projects[0].name).toBe('Updated Project')
     })
 
     it('preserves other projects when updating one', async () => {
       const updatedProject = { ...mockProject, name: 'Updated Project' }
-      window.milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
+      milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
 
       const store = useProjectsStore.getState()
       await store.updateProject('project-1', { name: 'Updated Project' })
@@ -280,7 +281,7 @@ describe('projectsStore', () => {
 
     it('handles update errors', async () => {
       const errorMessage = 'Update failed'
-      window.milo.categories.update = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.categories.update = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useProjectsStore.getState()
       const result = await store.updateProject('project-1', { name: 'Updated Project' })
@@ -290,7 +291,7 @@ describe('projectsStore', () => {
     })
 
     it('does not update state if API returns null', async () => {
-      window.milo.categories.update = vi.fn().mockResolvedValue(null)
+      milo.categories.update = vi.fn().mockResolvedValue(null)
 
       const store = useProjectsStore.getState()
       const result = await store.updateProject('project-1', { name: 'Updated Project' })
@@ -306,7 +307,7 @@ describe('projectsStore', () => {
         color: '#EF4444',
         isActive: false,
       }
-      window.milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
+      milo.categories.update = vi.fn().mockResolvedValue(updatedProject)
 
       const store = useProjectsStore.getState()
       const result = await store.updateProject('project-1', {
@@ -331,7 +332,7 @@ describe('projectsStore', () => {
       const result = await store.deleteProject('project-1')
 
       expect(result).toBe(true)
-      expect(window.milo.categories.delete).toHaveBeenCalledWith('project-1')
+      expect(milo.categories.delete).toHaveBeenCalledWith('project-1')
       expect(useProjectsStore.getState().projects).toHaveLength(2)
       expect(useProjectsStore.getState().projects.find(p => p.id === 'project-1')).toBeUndefined()
     })
@@ -356,7 +357,7 @@ describe('projectsStore', () => {
 
     it('handles deletion errors', async () => {
       const errorMessage = 'Deletion failed'
-      window.milo.categories.delete = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.categories.delete = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useProjectsStore.getState()
       const result = await store.deleteProject('project-1')
@@ -367,7 +368,7 @@ describe('projectsStore', () => {
     })
 
     it('does not remove project if API returns false', async () => {
-      window.milo.categories.delete = vi.fn().mockResolvedValue(false)
+      milo.categories.delete = vi.fn().mockResolvedValue(false)
 
       const store = useProjectsStore.getState()
       const result = await store.deleteProject('project-1')
@@ -402,19 +403,19 @@ describe('projectsStore', () => {
 
     it('reorders projects by calling API and refetching', async () => {
       const reorderedProjects = [mockProjects[2], mockProjects[0], mockProjects[1]]
-      window.milo.categories.getActive = vi.fn().mockResolvedValue(reorderedProjects)
+      milo.categories.getActive = vi.fn().mockResolvedValue(reorderedProjects)
 
       const store = useProjectsStore.getState()
       await store.reorderProjects(['project-3', 'project-1', 'project-2'])
 
-      expect(window.milo.categories.reorder).toHaveBeenCalledWith(['project-3', 'project-1', 'project-2'])
-      expect(window.milo.categories.getActive).toHaveBeenCalled()
+      expect(milo.categories.reorder).toHaveBeenCalledWith(['project-3', 'project-1', 'project-2'])
+      expect(milo.categories.getActive).toHaveBeenCalled()
       expect(useProjectsStore.getState().projects).toEqual(reorderedProjects)
     })
 
     it('handles reorder errors', async () => {
       const errorMessage = 'Reorder failed'
-      window.milo.categories.reorder = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.categories.reorder = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useProjectsStore.getState()
       await store.reorderProjects(['project-2', 'project-1', 'project-3'])
@@ -425,19 +426,19 @@ describe('projectsStore', () => {
     })
 
     it('handles refetch errors after successful reorder', async () => {
-      window.milo.categories.reorder = vi.fn().mockResolvedValue(undefined)
-      window.milo.categories.getActive = vi.fn().mockRejectedValue(new Error('Refetch failed'))
+      milo.categories.reorder = vi.fn().mockResolvedValue(undefined)
+      milo.categories.getActive = vi.fn().mockRejectedValue(new Error('Refetch failed'))
 
       const store = useProjectsStore.getState()
       await store.reorderProjects(['project-2', 'project-1', 'project-3'])
 
-      expect(window.milo.categories.reorder).toHaveBeenCalled()
+      expect(milo.categories.reorder).toHaveBeenCalled()
       expect(useProjectsStore.getState().error).toBe('Refetch failed')
     })
 
     it('can reverse order of projects', async () => {
       const reversedProjects = [...mockProjects].reverse()
-      window.milo.categories.getActive = vi.fn().mockResolvedValue(reversedProjects)
+      milo.categories.getActive = vi.fn().mockResolvedValue(reversedProjects)
 
       const store = useProjectsStore.getState()
       await store.reorderProjects(['project-3', 'project-2', 'project-1'])
@@ -446,12 +447,12 @@ describe('projectsStore', () => {
     })
 
     it('handles empty reorder array', async () => {
-      window.milo.categories.getActive = vi.fn().mockResolvedValue([])
+      milo.categories.getActive = vi.fn().mockResolvedValue([])
 
       const store = useProjectsStore.getState()
       await store.reorderProjects([])
 
-      expect(window.milo.categories.reorder).toHaveBeenCalledWith([])
+      expect(milo.categories.reorder).toHaveBeenCalledWith([])
     })
   })
 
@@ -504,13 +505,13 @@ describe('projectsStore', () => {
       await Promise.all([fetch1, fetch2, fetch3])
 
       // Should have called API multiple times but state should be consistent
-      expect(window.milo.categories.getActive).toHaveBeenCalledTimes(3)
+      expect(milo.categories.getActive).toHaveBeenCalledTimes(3)
       expect(useProjectsStore.getState().projects).toEqual(mockProjects)
     })
 
     it('handles create followed by immediate fetch', async () => {
       const newProject = { ...mockProject, id: 'project-new' }
-      window.milo.categories.create = vi.fn().mockResolvedValue(newProject)
+      milo.categories.create = vi.fn().mockResolvedValue(newProject)
 
       const store = useProjectsStore.getState()
 
@@ -527,14 +528,14 @@ describe('projectsStore', () => {
 
     it('clears error after successful operation following failure', async () => {
       // First operation fails
-      window.milo.categories.create = vi.fn().mockRejectedValue(new Error('First error'))
+      milo.categories.create = vi.fn().mockRejectedValue(new Error('First error'))
       const store = useProjectsStore.getState()
       await store.createProject({ name: 'New', color: '#000', isActive: true, sortOrder: 1 })
 
       expect(useProjectsStore.getState().error).toBe('First error')
 
       // Second operation succeeds but doesn't clear error (by design)
-      window.milo.categories.create = vi.fn().mockResolvedValue(mockProject)
+      milo.categories.create = vi.fn().mockResolvedValue(mockProject)
       await store.createProject({ name: 'New', color: '#000', isActive: true, sortOrder: 1 })
 
       // Error should still be present (fetch clears error, but create/update/delete don't)
@@ -564,7 +565,7 @@ describe('projectsStore', () => {
         // Missing color, isActive, sortOrder
       } as any
 
-      window.milo.categories.create = vi.fn().mockResolvedValue(malformedProject)
+      milo.categories.create = vi.fn().mockResolvedValue(malformedProject)
 
       const store = useProjectsStore.getState()
       const result = await store.createProject({

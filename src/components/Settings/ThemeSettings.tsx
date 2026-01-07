@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import { X, Palette, RotateCcw } from 'lucide-react'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -24,7 +25,7 @@ const DEFAULT_COLORS: ThemeColors = {
  * - Color picker for each theme color
  * - Live preview (changes apply immediately)
  * - Reset to defaults button
- * - Saves to database via window.milo.settings.setThemeColors()
+ * - Saves to database via milo.settings.setThemeColors()
  */
 export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
   isOpen,
@@ -73,7 +74,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
 
     // Save to database
     try {
-      await window.milo?.settings.setThemeColors(toBackendColors(DEFAULT_COLORS))
+      await milo?.settings.setThemeColors(toBackendColors(DEFAULT_COLORS))
     } catch (error) {
       console.error('Failed to save default theme colors:', error)
     }
@@ -82,7 +83,7 @@ export const ThemeSettings: React.FC<ThemeSettingsProps> = ({
   const handleSave = async () => {
     try {
       // Save to database via IPC (convert to backend format)
-      await window.milo?.settings.setThemeColors(toBackendColors(localColors))
+      await milo?.settings.setThemeColors(toBackendColors(localColors))
       onClose()
     } catch (error) {
       console.error('Failed to save theme colors:', error)

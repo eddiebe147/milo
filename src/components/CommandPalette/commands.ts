@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { useTasksStore } from '@/stores/tasksStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { ModalContextValue } from '@/contexts/ModalContext'
@@ -197,7 +198,7 @@ export const getCommands = (
       category: 'app',
       icon: 'power',
       action: () => {
-        window.milo?.window.close()
+        milo?.window.close()
       },
     },
   ]

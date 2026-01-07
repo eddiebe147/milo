@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// Mock window.milo API for tests
+// Mock milo API for tests
 const mockMiloAPI = {
   tasks: {
     getAll: vi.fn().mockResolvedValue([]),
@@ -89,7 +89,7 @@ const mockMiloAPI = {
   },
 }
 
-// Set up window.milo mock
+// Set up milo mock
 Object.defineProperty(window, 'milo', {
   value: mockMiloAPI,
   writable: true,
