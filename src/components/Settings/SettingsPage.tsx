@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import {
   Settings,
@@ -17,6 +18,11 @@ import {
   Shield,
   Volume2,
   Play,
+  Download,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useModal } from '@/contexts/ModalContext'
@@ -43,8 +49,8 @@ const AnalyticsToggle: React.FC = () => {
     const loadAnalyticsState = async () => {
       try {
         const [enabled, available] = await Promise.all([
-          window.milo.analytics.isEnabled(),
-          window.milo.analytics.isAvailable(),
+          milo.analytics.isEnabled(),
+          milo.analytics.isAvailable(),
         ])
         setIsEnabled(enabled)
         setIsAvailable(available)
@@ -60,10 +66,10 @@ const AnalyticsToggle: React.FC = () => {
   const handleToggle = async () => {
     try {
       if (isEnabled) {
-        await window.milo.analytics.disable()
+        await milo.analytics.disable()
         setIsEnabled(false)
       } else {
-        await window.milo.analytics.enable()
+        await milo.analytics.enable()
         setIsEnabled(true)
       }
     } catch (error) {
@@ -102,6 +108,141 @@ const AnalyticsToggle: React.FC = () => {
       >
         {isEnabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
       </button>
+    </div>
+  )
+}
+
+/**
+ * UpdateChecker - Check for app updates from GitHub Releases
+ */
+interface UpdateInfo {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string
+  releaseUrl: string
+  downloadUrl: string
+  releaseNotes: string
+  publishedAt: string
+}
+
+const UpdateChecker: React.FC = () => {
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastChecked, setLastChecked] = useState<Date | null>(null)
+
+  const checkForUpdates = async () => {
+    setIsChecking(true)
+    setError(null)
+    try {
+      const info = await milo.updates.check()
+      setUpdateInfo(info)
+      setLastChecked(new Date())
+    } catch (err) {
+      setError('Failed to check for updates')
+      console.error('Update check failed:', err)
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
+  // Check on mount
+  useEffect(() => {
+    checkForUpdates()
+  }, [])
+
+  const openDownload = () => {
+    if (updateInfo?.downloadUrl) {
+      window.open(updateInfo.downloadUrl, '_blank')
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Current version & check button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm text-pipboy-green">App Version</span>
+          <p className="text-xs text-pipboy-green-dim font-mono">
+            v{updateInfo?.currentVersion || '...'}
+          </p>
+        </div>
+        <button
+          onClick={checkForUpdates}
+          disabled={isChecking}
+          className={`
+            flex items-center gap-1.5 px-3 py-1.5 rounded-sm
+            text-xs border transition-all
+            ${isChecking
+              ? 'border-pipboy-border text-pipboy-green-dim cursor-wait'
+              : 'border-pipboy-border hover:border-pipboy-green/50 text-pipboy-green'
+            }
+          `}
+        >
+          {isChecking ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              <span>Checking...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw size={12} />
+              <span>Check</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Update status */}
+      {error && (
+        <div className="flex items-center gap-2 p-2 rounded-sm bg-red-500/10 border border-red-500/30">
+          <AlertCircle size={14} className="text-red-400" />
+          <span className="text-xs text-red-400">{error}</span>
+        </div>
+      )}
+
+      {updateInfo && !error && (
+        <>
+          {updateInfo.hasUpdate ? (
+            <div className="p-3 rounded-sm bg-pipboy-green/10 border border-pipboy-green/30 space-y-2">
+              <div className="flex items-center gap-2">
+                <Download size={14} className="text-pipboy-green" />
+                <span className="text-sm text-pipboy-green font-medium">
+                  Update Available: v{updateInfo.latestVersion}
+                </span>
+              </div>
+              <p className="text-[10px] text-pipboy-green-dim/80">
+                {updateInfo.releaseNotes?.slice(0, 150)}
+                {updateInfo.releaseNotes?.length > 150 ? '...' : ''}
+              </p>
+              <button
+                onClick={openDownload}
+                className="
+                  flex items-center gap-1.5 px-3 py-1.5 rounded-sm
+                  text-xs bg-pipboy-green/20 border border-pipboy-green
+                  text-pipboy-green hover:bg-pipboy-green/30 transition-all
+                "
+              >
+                <ExternalLink size={12} />
+                <span>Download Update</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-2 rounded-sm bg-pipboy-surface border border-pipboy-border">
+              <CheckCircle size={14} className="text-pipboy-green" />
+              <span className="text-xs text-pipboy-green-dim">
+                You're on the latest version
+              </span>
+            </div>
+          )}
+        </>
+      )}
+
+      {lastChecked && (
+        <p className="text-[10px] text-pipboy-green-dim/40 text-right">
+          Last checked: {lastChecked.toLocaleTimeString()}
+        </p>
+      )}
     </div>
   )
 }
@@ -199,6 +340,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
       voiceEnabled: true,
       voiceId: '',
       voiceRate: 1.0,
+      voiceMuted: false,
     }
     setLocalSettings(defaults)
     setHasChanges(true)
@@ -311,10 +453,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
             className={`
               flex items-center gap-1.5 px-3 py-1.5 rounded-sm
               text-xs transition-all
-              ${
-                hasChanges
-                  ? 'bg-pipboy-green/20 border border-pipboy-green text-pipboy-green hover:bg-pipboy-green/30'
-                  : 'border border-pipboy-border text-pipboy-green-dim cursor-not-allowed'
+              ${hasChanges
+                ? 'bg-pipboy-green/20 border border-pipboy-green text-pipboy-green hover:bg-pipboy-green/30'
+                : 'border border-pipboy-border text-pipboy-green-dim cursor-not-allowed'
               }
               ${saveSuccess ? 'bg-green-500/20 border-green-500' : ''}
             `}
@@ -355,10 +496,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                     className={`
                       px-2 py-1 text-[10px] rounded-sm
                       border transition-all
-                      ${
-                        localSettings.workDays.includes(index)
-                          ? 'bg-pipboy-green/20 border-pipboy-green/50 text-pipboy-green'
-                          : 'bg-pipboy-surface border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30'
+                      ${localSettings.workDays.includes(index)
+                        ? 'bg-pipboy-green/20 border-pipboy-green/50 text-pipboy-green'
+                        : 'bg-pipboy-surface border-pipboy-border text-pipboy-green-dim hover:border-pipboy-green/30'
                       }
                     `}
                   >
@@ -486,10 +626,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-sm
                   text-[10px] border transition-all
-                  ${
-                    localSettings.refillMode === 'endless'
-                      ? 'bg-pipboy-green/10 text-pipboy-green border-pipboy-green/50'
-                      : 'bg-pipboy-surface text-pipboy-green-dim border-pipboy-border hover:border-pipboy-green/30'
+                  ${localSettings.refillMode === 'endless'
+                    ? 'bg-pipboy-green/10 text-pipboy-green border-pipboy-green/50'
+                    : 'bg-pipboy-surface text-pipboy-green-dim border-pipboy-border hover:border-pipboy-green/30'
                   }
                 `}
               >
@@ -685,10 +824,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
           </div>
         </section>
 
+        {/* Updates Section */}
+        <section>
+          <SectionHeader icon={<Download size={14} />} title="Updates" />
+          <div className="pl-1">
+            <UpdateChecker />
+          </div>
+        </section>
+
         {/* Version info at bottom */}
         <div className="pt-4 border-t border-pipboy-border/30 text-center">
           <p className="text-[10px] text-pipboy-green-dim/40">
-            MILO v0.3.0 • Made with 💚 by ID8Labs
+            Made with 💚 by ID8Labs
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect, useMemo } from 'react'
 import { Radio, Loader2, AlertCircle, RefreshCw, Pause, Filter } from 'lucide-react'
 import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
@@ -168,7 +169,7 @@ export const SignalQueue: React.FC = () => {
 
     try {
       // Generate the prompt for this task
-      const result = await window.milo.taskExecution.generatePrompt(task.id)
+      const result = await milo.taskExecution.generatePrompt(task.id)
       setGeneratedPrompt(result.prompt)
       setProjectPath(result.projectPath)
     } catch (error) {
@@ -194,11 +195,11 @@ export const SignalQueue: React.FC = () => {
 
     try {
       // First, mark the task as started
-      await window.milo.tasks.start(modalTask.id)
-      await window.milo.tasks.recordWork(modalTask.id)
+      await milo.tasks.start(modalTask.id)
+      await milo.tasks.recordWork(modalTask.id)
 
       // Execute with the selected target
-      const result = await window.milo.taskExecution.executeWithTarget(target, prompt, projectPath)
+      const result = await milo.taskExecution.executeWithTarget(target, prompt, projectPath)
       console.log('[SignalQueue] Execution result:', result)
 
       // Close the modal
@@ -217,7 +218,7 @@ export const SignalQueue: React.FC = () => {
 
     setIsGeneratingPrompt(true)
     try {
-      const result = await window.milo.taskExecution.generatePrompt(modalTask.id)
+      const result = await milo.taskExecution.generatePrompt(modalTask.id)
       setGeneratedPrompt(result.prompt)
       setProjectPath(result.projectPath)
     } catch (error) {

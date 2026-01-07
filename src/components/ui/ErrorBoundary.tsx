@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
@@ -41,13 +42,13 @@ export class ErrorBoundary extends Component<Props, State> {
     // Report to analytics via IPC (if available)
     // Note: Using IPC because analytics is in main process
     try {
-      if (window.milo?.settings) {
+      if (milo?.settings) {
         // We can't directly call analytics from renderer, but we log for now
         // Future: Add IPC handler for error reporting
         console.error('[ErrorBoundary] Error reported for analytics')
       }
     } catch {
-      // Ignore if window.milo isn't available
+      // Ignore if milo isn't available
     }
   }
 

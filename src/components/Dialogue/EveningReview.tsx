@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useEffect } from 'react'
 import { Moon, Trophy, TrendingUp, ArrowRight, RefreshCw } from 'lucide-react'
 import { DialogueModal } from './DialogueModal'
@@ -62,11 +63,11 @@ export const EveningReview: React.FC<EveningReviewProps> = ({
   // Handle carryover recommendations
   const handleCarryover = async (taskId: string, recommendation: 'defer' | 'tomorrow' | 'break_down') => {
     if (recommendation === 'defer') {
-      await window.milo?.tasks.defer(taskId)
+      await milo?.tasks.defer(taskId)
     } else if (recommendation === 'tomorrow') {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
-      await window.milo?.tasks.update(taskId, {
+      await milo?.tasks.update(taskId, {
         scheduledDate: tomorrow.toISOString().split('T')[0],
       })
     }

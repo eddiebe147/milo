@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useGoalsStore } from './goalsStore'
 import type { Goal } from '../types'
@@ -84,9 +85,9 @@ describe('goalsStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo.goals API
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo.goals API
+    milo = {
+      ...milo,
       goals: {
         getAll: vi.fn().mockResolvedValue(mockGoals),
         getById: vi.fn().mockResolvedValue(mockYearlyGoal),
@@ -152,7 +153,7 @@ describe('goalsStore', () => {
 
       const state = useGoalsStore.getState()
       expect(state.goals).toEqual(mockGoals)
-      expect(window.milo.goals.getAll).toHaveBeenCalledTimes(1)
+      expect(milo.goals.getAll).toHaveBeenCalledTimes(1)
     })
 
     it('clears error on successful fetch', async () => {
@@ -166,7 +167,7 @@ describe('goalsStore', () => {
 
     it('handles errors', async () => {
       const errorMessage = 'Failed to fetch goals'
-      window.milo.goals.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.goals.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useGoalsStore.getState()
       await store.fetchGoals()
@@ -199,7 +200,7 @@ describe('goalsStore', () => {
 
       const state = useGoalsStore.getState()
       expect(state.hierarchy).toEqual(mockHierarchy)
-      expect(window.milo.goals.getHierarchy).toHaveBeenCalledTimes(1)
+      expect(milo.goals.getHierarchy).toHaveBeenCalledTimes(1)
     })
 
     it('clears error on successful fetch', async () => {
@@ -213,7 +214,7 @@ describe('goalsStore', () => {
 
     it('handles errors', async () => {
       const errorMessage = 'Failed to fetch hierarchy'
-      window.milo.goals.getHierarchy = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.goals.getHierarchy = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useGoalsStore.getState()
       await store.fetchHierarchy()
@@ -239,7 +240,7 @@ describe('goalsStore', () => {
       const result = await store.createGoal(newGoalData)
 
       expect(result).toEqual(mockYearlyGoal)
-      expect(window.milo.goals.create).toHaveBeenCalledWith(newGoalData)
+      expect(milo.goals.create).toHaveBeenCalledWith(newGoalData)
       expect(useGoalsStore.getState().goals).toContain(mockYearlyGoal)
     })
 
@@ -278,7 +279,7 @@ describe('goalsStore', () => {
       const store = useGoalsStore.getState()
 
       // Test quarterly goal
-      window.milo.goals.create = vi.fn().mockResolvedValue(mockQuarterlyGoal)
+      milo.goals.create = vi.fn().mockResolvedValue(mockQuarterlyGoal)
       await store.createGoal({
         title: 'Quarterly Goal',
         parentId: 'goal-1',
@@ -290,7 +291,7 @@ describe('goalsStore', () => {
     })
 
     it('handles creation errors', async () => {
-      window.milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
+      milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
 
       const store = useGoalsStore.getState()
       const result = await store.createGoal({
@@ -305,7 +306,7 @@ describe('goalsStore', () => {
     })
 
     it('does not update state when creation fails', async () => {
-      window.milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
+      milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
 
       const store = useGoalsStore.getState()
       await store.createGoal({
@@ -329,7 +330,7 @@ describe('goalsStore', () => {
 
     it('updates goal in state', async () => {
       const updatedGoal = { ...mockYearlyGoal, title: 'Updated Title' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       const result = await store.updateGoal('goal-1', { title: 'Updated Title' })
@@ -342,7 +343,7 @@ describe('goalsStore', () => {
 
     it('updates goal in hierarchy', async () => {
       const updatedGoal = { ...mockYearlyGoal, title: 'Updated Title' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-1', { title: 'Updated Title' })
@@ -356,7 +357,7 @@ describe('goalsStore', () => {
       useGoalsStore.setState({ selectedGoal })
 
       const updatedGoal = { ...mockYearlyGoal, title: 'Updated Active' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-1', { title: 'Updated Active' })
@@ -369,7 +370,7 @@ describe('goalsStore', () => {
       useGoalsStore.setState({ selectedGoal })
 
       const updatedGoal = { ...mockYearlyGoal, title: 'Updated' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-1', { title: 'Updated' })
@@ -379,7 +380,7 @@ describe('goalsStore', () => {
 
     it('handles timeframe changes', async () => {
       const updatedGoal = { ...mockYearlyGoal, timeframe: 'quarterly' as const }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-1', { timeframe: 'quarterly' })
@@ -395,7 +396,7 @@ describe('goalsStore', () => {
 
     it('adds goal to beginning when moving to new timeframe', async () => {
       const updatedGoal = { ...mockYearlyGoal, timeframe: 'quarterly' as const }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-1', { timeframe: 'quarterly' })
@@ -406,7 +407,7 @@ describe('goalsStore', () => {
 
     it('handles update within same timeframe', async () => {
       const updatedGoal = { ...mockQuarterlyGoal, title: 'Updated Quarterly' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('goal-2', { title: 'Updated Quarterly' })
@@ -416,7 +417,7 @@ describe('goalsStore', () => {
     })
 
     it('handles update errors', async () => {
-      window.milo.goals.update = vi.fn().mockRejectedValue(new Error('Update failed'))
+      milo.goals.update = vi.fn().mockRejectedValue(new Error('Update failed'))
 
       const store = useGoalsStore.getState()
       const result = await store.updateGoal('goal-1', { title: 'Updated Title' })
@@ -426,7 +427,7 @@ describe('goalsStore', () => {
     })
 
     it('does not update state when update fails', async () => {
-      window.milo.goals.update = vi.fn().mockRejectedValue(new Error('Update failed'))
+      milo.goals.update = vi.fn().mockRejectedValue(new Error('Update failed'))
 
       const originalTitle = mockYearlyGoal.title
       const store = useGoalsStore.getState()
@@ -450,7 +451,7 @@ describe('goalsStore', () => {
       const result = await store.deleteGoal('goal-1')
 
       expect(result).toBe(true)
-      expect(window.milo.goals.delete).toHaveBeenCalledWith('goal-1')
+      expect(milo.goals.delete).toHaveBeenCalledWith('goal-1')
 
       const state = useGoalsStore.getState()
       expect(state.goals.find(g => g.id === 'goal-1')).toBeUndefined()
@@ -493,7 +494,7 @@ describe('goalsStore', () => {
     })
 
     it('handles deletion errors', async () => {
-      window.milo.goals.delete = vi.fn().mockRejectedValue(new Error('Delete failed'))
+      milo.goals.delete = vi.fn().mockRejectedValue(new Error('Delete failed'))
 
       const store = useGoalsStore.getState()
       const result = await store.deleteGoal('goal-1')
@@ -503,7 +504,7 @@ describe('goalsStore', () => {
     })
 
     it('does not update state when deletion fails', async () => {
-      window.milo.goals.delete = vi.fn().mockRejectedValue(new Error('Delete failed'))
+      milo.goals.delete = vi.fn().mockRejectedValue(new Error('Delete failed'))
 
       const originalLength = mockGoals.length
       const store = useGoalsStore.getState()
@@ -513,7 +514,7 @@ describe('goalsStore', () => {
     })
 
     it('handles API returning false', async () => {
-      window.milo.goals.delete = vi.fn().mockResolvedValue(false)
+      milo.goals.delete = vi.fn().mockResolvedValue(false)
 
       const store = useGoalsStore.getState()
       const result = await store.deleteGoal('goal-1')
@@ -553,7 +554,7 @@ describe('goalsStore', () => {
 
   describe('edge cases', () => {
     it('handles empty goals array from API', async () => {
-      window.milo.goals.getAll = vi.fn().mockResolvedValue([])
+      milo.goals.getAll = vi.fn().mockResolvedValue([])
 
       const store = useGoalsStore.getState()
       await store.fetchGoals()
@@ -568,7 +569,7 @@ describe('goalsStore', () => {
         monthly: [],
         weekly: [],
       }
-      window.milo.goals.getHierarchy = vi.fn().mockResolvedValue(emptyHierarchy)
+      milo.goals.getHierarchy = vi.fn().mockResolvedValue(emptyHierarchy)
 
       const store = useGoalsStore.getState()
       await store.fetchHierarchy()
@@ -580,7 +581,7 @@ describe('goalsStore', () => {
       useGoalsStore.setState({ goals: [mockYearlyGoal] })
 
       const updatedGoal = { ...mockMonthlyGoal, title: 'Updated' }
-      window.milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
+      milo.goals.update = vi.fn().mockResolvedValue(updatedGoal)
 
       const store = useGoalsStore.getState()
       await store.updateGoal('non-existent-id', { title: 'Updated' })
@@ -597,13 +598,13 @@ describe('goalsStore', () => {
       await store.deleteGoal('non-existent-id')
 
       // Should call API but not affect state
-      expect(window.milo.goals.delete).toHaveBeenCalledWith('non-existent-id')
+      expect(milo.goals.delete).toHaveBeenCalledWith('non-existent-id')
       expect(useGoalsStore.getState().goals.length).toBe(1)
     })
 
     it('preserves other goals when creating new goal fails', async () => {
       useGoalsStore.setState({ goals: mockGoals })
-      window.milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
+      milo.goals.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
 
       const originalLength = mockGoals.length
       const store = useGoalsStore.getState()
@@ -618,7 +619,7 @@ describe('goalsStore', () => {
     })
 
     it('handles API returning null for create', async () => {
-      window.milo.goals.create = vi.fn().mockResolvedValue(null)
+      milo.goals.create = vi.fn().mockResolvedValue(null)
 
       const store = useGoalsStore.getState()
       const result = await store.createGoal({
@@ -634,7 +635,7 @@ describe('goalsStore', () => {
 
     it('handles API returning null for update', async () => {
       useGoalsStore.setState({ goals: [mockYearlyGoal] })
-      window.milo.goals.update = vi.fn().mockResolvedValue(null)
+      milo.goals.update = vi.fn().mockResolvedValue(null)
 
       const store = useGoalsStore.getState()
       const result = await store.updateGoal('goal-1', { title: 'Updated' })
@@ -663,14 +664,14 @@ describe('goalsStore', () => {
   describe('error recovery', () => {
     it('allows operations after error', async () => {
       // Cause an error
-      window.milo.goals.getAll = vi.fn().mockRejectedValue(new Error('First error'))
+      milo.goals.getAll = vi.fn().mockRejectedValue(new Error('First error'))
       const store = useGoalsStore.getState()
       await store.fetchGoals()
 
       expect(useGoalsStore.getState().error).toBe('First error')
 
       // Fix the API and try again
-      window.milo.goals.getAll = vi.fn().mockResolvedValue(mockGoals)
+      milo.goals.getAll = vi.fn().mockResolvedValue(mockGoals)
       await store.fetchGoals()
 
       expect(useGoalsStore.getState().error).toBeNull()
@@ -688,7 +689,7 @@ describe('goalsStore', () => {
 
     it('sets error on API rejection', async () => {
       const errorMessage = 'Network error'
-      window.milo.goals.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.goals.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useGoalsStore.getState()
       await store.fetchGoals()

@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useActivityStore } from './activityStore'
 import type { ActivityLog, CurrentActivityState } from '../types'
@@ -52,9 +53,9 @@ describe('activityStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo API
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo API
+    milo = {
+      ...milo,
       activity: {
         getToday: vi.fn().mockResolvedValue([mockActivityLog]),
         getSummary: vi.fn().mockResolvedValue(mockSummary),
@@ -117,7 +118,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.fetchTodayData()
 
-      expect(window.milo.activity.getToday).toHaveBeenCalled()
+      expect(milo.activity.getToday).toHaveBeenCalled()
       expect(useActivityStore.getState().todayLogs).toEqual([mockActivityLog])
     })
 
@@ -125,7 +126,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.fetchTodayData()
 
-      expect(window.milo.activity.getSummary).toHaveBeenCalled()
+      expect(milo.activity.getSummary).toHaveBeenCalled()
       expect(useActivityStore.getState().todaySummary).toEqual(mockSummary)
     })
 
@@ -133,7 +134,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.fetchTodayData()
 
-      expect(window.milo.activity.getAppBreakdown).toHaveBeenCalled()
+      expect(milo.activity.getAppBreakdown).toHaveBeenCalled()
       expect(useActivityStore.getState().appBreakdown).toEqual(mockBreakdown)
     })
 
@@ -141,13 +142,13 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.fetchTodayData()
 
-      expect(window.milo.activity.getToday).toHaveBeenCalledTimes(1)
-      expect(window.milo.activity.getSummary).toHaveBeenCalledTimes(1)
-      expect(window.milo.activity.getAppBreakdown).toHaveBeenCalledTimes(1)
+      expect(milo.activity.getToday).toHaveBeenCalledTimes(1)
+      expect(milo.activity.getSummary).toHaveBeenCalledTimes(1)
+      expect(milo.activity.getAppBreakdown).toHaveBeenCalledTimes(1)
     })
 
     it('handles errors', async () => {
-      window.milo.activity.getToday = vi.fn().mockRejectedValue(new Error('API Error'))
+      milo.activity.getToday = vi.fn().mockRejectedValue(new Error('API Error'))
 
       const store = useActivityStore.getState()
       await store.fetchTodayData()
@@ -194,7 +195,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.startMonitoring()
 
-      expect(window.milo.monitoring.start).toHaveBeenCalled()
+      expect(milo.monitoring.start).toHaveBeenCalled()
     })
 
     it('sets isMonitoring to true', async () => {
@@ -214,7 +215,7 @@ describe('activityStore', () => {
     })
 
     it('handles errors', async () => {
-      window.milo.monitoring.start = vi.fn().mockRejectedValue(new Error('Start failed'))
+      milo.monitoring.start = vi.fn().mockRejectedValue(new Error('Start failed'))
 
       const store = useActivityStore.getState()
       await store.startMonitoring()
@@ -228,7 +229,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.stopMonitoring()
 
-      expect(window.milo.monitoring.stop).toHaveBeenCalled()
+      expect(milo.monitoring.stop).toHaveBeenCalled()
     })
 
     it('sets isMonitoring to false', async () => {
@@ -241,7 +242,7 @@ describe('activityStore', () => {
     })
 
     it('handles errors', async () => {
-      window.milo.monitoring.stop = vi.fn().mockRejectedValue(new Error('Stop failed'))
+      milo.monitoring.stop = vi.fn().mockRejectedValue(new Error('Stop failed'))
 
       const store = useActivityStore.getState()
       await store.stopMonitoring()
@@ -255,11 +256,11 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.toggleMonitoring()
 
-      expect(window.milo.monitoring.toggle).toHaveBeenCalled()
+      expect(milo.monitoring.toggle).toHaveBeenCalled()
     })
 
     it('returns the new pause state', async () => {
-      window.milo.monitoring.toggle = vi.fn().mockResolvedValue(true)
+      milo.monitoring.toggle = vi.fn().mockResolvedValue(true)
 
       const store = useActivityStore.getState()
       const result = await store.toggleMonitoring()
@@ -268,7 +269,7 @@ describe('activityStore', () => {
     })
 
     it('updates isPaused state', async () => {
-      window.milo.monitoring.toggle = vi.fn().mockResolvedValue(true)
+      milo.monitoring.toggle = vi.fn().mockResolvedValue(true)
 
       const store = useActivityStore.getState()
       await store.toggleMonitoring()
@@ -277,7 +278,7 @@ describe('activityStore', () => {
     })
 
     it('handles errors and returns false', async () => {
-      window.milo.monitoring.toggle = vi.fn().mockRejectedValue(new Error('Toggle failed'))
+      milo.monitoring.toggle = vi.fn().mockRejectedValue(new Error('Toggle failed'))
 
       const store = useActivityStore.getState()
       const result = await store.toggleMonitoring()
@@ -292,7 +293,7 @@ describe('activityStore', () => {
       const store = useActivityStore.getState()
       await store.getMonitoringStatus()
 
-      expect(window.milo.monitoring.status).toHaveBeenCalled()
+      expect(milo.monitoring.status).toHaveBeenCalled()
     })
 
     it('updates all monitoring state from status', async () => {
@@ -315,7 +316,7 @@ describe('activityStore', () => {
     })
 
     it('handles errors and throws', async () => {
-      window.milo.monitoring.status = vi.fn().mockRejectedValue(new Error('Status failed'))
+      milo.monitoring.status = vi.fn().mockRejectedValue(new Error('Status failed'))
 
       const store = useActivityStore.getState()
       await expect(store.getMonitoringStatus()).rejects.toThrow('Status failed')

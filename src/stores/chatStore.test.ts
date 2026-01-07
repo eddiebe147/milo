@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useChatStore } from './chatStore'
 
@@ -42,9 +43,9 @@ describe('chatStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo.chat API
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo.chat API
+    milo = {
+      ...milo,
       chat: {
         getAllConversations: vi.fn().mockResolvedValue([mockConversation]),
         getConversation: vi.fn().mockResolvedValue(mockConversation),
@@ -60,7 +61,7 @@ describe('chatStore', () => {
         deleteMessage: vi.fn().mockResolvedValue(true),
       },
       ai: {
-        ...window.milo?.ai,
+        ...milo?.ai,
         chat: vi.fn().mockResolvedValue('Hello! How can I help you today?'),
       },
     } as any
@@ -159,7 +160,7 @@ describe('chatStore', () => {
         // Wait for async loadConversations
         await new Promise(resolve => setTimeout(resolve, 0))
 
-        expect(window.milo.chat.getAllConversations).toHaveBeenCalled()
+        expect(milo.chat.getAllConversations).toHaveBeenCalled()
       })
 
       it('does not reload conversations when already loaded', async () => {
@@ -167,7 +168,7 @@ describe('chatStore', () => {
         const store = useChatStore.getState()
         store.toggleHistory()
 
-        expect(window.milo.chat.getAllConversations).not.toHaveBeenCalled()
+        expect(milo.chat.getAllConversations).not.toHaveBeenCalled()
       })
     })
   })
@@ -178,12 +179,12 @@ describe('chatStore', () => {
         const store = useChatStore.getState()
         await store.loadConversations()
 
-        expect(window.milo.chat.getAllConversations).toHaveBeenCalled()
+        expect(milo.chat.getAllConversations).toHaveBeenCalled()
         expect(useChatStore.getState().conversations).toEqual([mockConversation])
       })
 
       it('handles API errors gracefully', async () => {
-        window.milo.chat.getAllConversations = vi.fn().mockRejectedValue(new Error('API Error'))
+        milo.chat.getAllConversations = vi.fn().mockRejectedValue(new Error('API Error'))
 
         const store = useChatStore.getState()
         await store.loadConversations()
@@ -207,7 +208,7 @@ describe('chatStore', () => {
         const store = useChatStore.getState()
         await store.loadConversation('conv-1')
 
-        expect(window.milo.chat.getMessages).toHaveBeenCalledWith('conv-1')
+        expect(milo.chat.getMessages).toHaveBeenCalledWith('conv-1')
         expect(useChatStore.getState().currentConversationId).toBe('conv-1')
         expect(useChatStore.getState().messages).toHaveLength(1)
         expect(useChatStore.getState().messages[0].content).toBe('Hello MILO')
@@ -232,7 +233,7 @@ describe('chatStore', () => {
       })
 
       it('handles errors and sets error state', async () => {
-        window.milo.chat.getMessages = vi.fn().mockRejectedValue(new Error('Fetch failed'))
+        milo.chat.getMessages = vi.fn().mockRejectedValue(new Error('Fetch failed'))
 
         const store = useChatStore.getState()
         await store.loadConversation('conv-1')
@@ -295,7 +296,7 @@ describe('chatStore', () => {
         const store = useChatStore.getState()
         await store.deleteConversation('conv-1')
 
-        expect(window.milo.chat.deleteConversation).toHaveBeenCalledWith('conv-1')
+        expect(milo.chat.deleteConversation).toHaveBeenCalledWith('conv-1')
       })
 
       it('removes conversation from local list', async () => {
@@ -323,7 +324,7 @@ describe('chatStore', () => {
       })
 
       it('handles API errors gracefully', async () => {
-        window.milo.chat.deleteConversation = vi.fn().mockRejectedValue(new Error('Delete failed'))
+        milo.chat.deleteConversation = vi.fn().mockRejectedValue(new Error('Delete failed'))
 
         const store = useChatStore.getState()
         await store.deleteConversation('conv-1')
@@ -339,14 +340,14 @@ describe('chatStore', () => {
       const store = useChatStore.getState()
       await store.sendMessage('   ')
 
-      expect(window.milo.chat.createConversation).not.toHaveBeenCalled()
+      expect(milo.chat.createConversation).not.toHaveBeenCalled()
     })
 
     it('creates new conversation if none exists', async () => {
       const store = useChatStore.getState()
       await store.sendMessage('Hello')
 
-      expect(window.milo.chat.createConversation).toHaveBeenCalled()
+      expect(milo.chat.createConversation).toHaveBeenCalled()
       expect(useChatStore.getState().currentConversationId).toBe('conv-1')
     })
 
@@ -356,14 +357,14 @@ describe('chatStore', () => {
       const store = useChatStore.getState()
       await store.sendMessage('Hello')
 
-      expect(window.milo.chat.createConversation).not.toHaveBeenCalled()
+      expect(milo.chat.createConversation).not.toHaveBeenCalled()
     })
 
     it('saves user message to database', async () => {
       const store = useChatStore.getState()
       await store.sendMessage('Hello MILO')
 
-      expect(window.milo.chat.addMessage).toHaveBeenCalledWith(
+      expect(milo.chat.addMessage).toHaveBeenCalledWith(
         'conv-1',
         'user',
         'Hello MILO'
@@ -380,7 +381,7 @@ describe('chatStore', () => {
 
     it('sets isGenerating while waiting for AI response', async () => {
       // Mock a slow AI response
-      window.milo.ai.chat = vi.fn().mockImplementation(() =>
+      milo.ai.chat = vi.fn().mockImplementation(() =>
         new Promise(resolve => setTimeout(() => resolve('Response'), 100))
       )
 
@@ -399,21 +400,21 @@ describe('chatStore', () => {
       const store = useChatStore.getState()
       await store.sendMessage('Hello MILO')
 
-      expect(window.milo.ai.chat).toHaveBeenCalledWith(
+      expect(milo.ai.chat).toHaveBeenCalledWith(
         'Hello MILO',
         expect.any(Array)
       )
     })
 
     it('saves assistant response to database', async () => {
-      window.milo.chat.addMessage = vi.fn()
+      milo.chat.addMessage = vi.fn()
         .mockResolvedValueOnce(mockDbMessage)  // User message
         .mockResolvedValueOnce(mockAssistantDbMessage)  // Assistant message
 
       const store = useChatStore.getState()
       await store.sendMessage('Hello')
 
-      expect(window.milo.chat.addMessage).toHaveBeenLastCalledWith(
+      expect(milo.chat.addMessage).toHaveBeenLastCalledWith(
         'conv-1',
         'assistant',
         'Hello! How can I help you today?'
@@ -421,18 +422,18 @@ describe('chatStore', () => {
     })
 
     it('auto-titles conversation after first exchange', async () => {
-      window.milo.chat.addMessage = vi.fn()
+      milo.chat.addMessage = vi.fn()
         .mockResolvedValueOnce(mockDbMessage)
         .mockResolvedValueOnce(mockAssistantDbMessage)
 
       const store = useChatStore.getState()
       await store.sendMessage('Hello')
 
-      expect(window.milo.chat.autoTitleConversation).toHaveBeenCalledWith('conv-1')
+      expect(milo.chat.autoTitleConversation).toHaveBeenCalledWith('conv-1')
     })
 
     it('handles AI error and sets error state', async () => {
-      window.milo.ai.chat = vi.fn().mockRejectedValue(new Error('AI unavailable'))
+      milo.ai.chat = vi.fn().mockRejectedValue(new Error('AI unavailable'))
 
       const store = useChatStore.getState()
       await store.sendMessage('Hello')
@@ -442,7 +443,7 @@ describe('chatStore', () => {
     })
 
     it('handles conversation creation failure', async () => {
-      window.milo.chat.createConversation = vi.fn().mockRejectedValue(new Error('DB error'))
+      milo.chat.createConversation = vi.fn().mockRejectedValue(new Error('DB error'))
 
       const store = useChatStore.getState()
       await store.sendMessage('Hello')

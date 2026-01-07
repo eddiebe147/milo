@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useNudgeStore } from './nudgeStore'
 import type { NudgeEvent, NudgeConfig, DriftStatus } from '@/types/milo-api'
@@ -40,16 +41,16 @@ describe('nudgeStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo API
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo API
+    milo = {
+      ...milo,
       nudge: {
         getConfig: vi.fn().mockResolvedValue(mockConfig),
         setConfig: vi.fn().mockResolvedValue(undefined),
         getDriftStatus: vi.fn().mockResolvedValue(mockDriftStatus),
       },
       events: {
-        ...window.milo?.events,
+        ...milo?.events,
         onNudgeTriggered: vi.fn().mockReturnValue(() => {}),
       },
     } as any
@@ -265,12 +266,12 @@ describe('nudgeStore', () => {
       const store = useNudgeStore.getState()
       await store.fetchConfig()
 
-      expect(window.milo?.nudge.getConfig).toHaveBeenCalled()
+      expect(milo?.nudge.getConfig).toHaveBeenCalled()
       expect(useNudgeStore.getState().config).toEqual(mockConfig)
     })
 
     it('handles errors gracefully', async () => {
-      window.milo.nudge.getConfig = vi.fn().mockRejectedValue(new Error('Config error'))
+      milo.nudge.getConfig = vi.fn().mockRejectedValue(new Error('Config error'))
 
       const store = useNudgeStore.getState()
       await store.fetchConfig()
@@ -287,24 +288,24 @@ describe('nudgeStore', () => {
       const store = useNudgeStore.getState()
       await store.updateConfig(updates)
 
-      expect(window.milo?.nudge.setConfig).toHaveBeenCalledWith(updates)
+      expect(milo?.nudge.setConfig).toHaveBeenCalledWith(updates)
     })
 
     it('refreshes config after update', async () => {
       const store = useNudgeStore.getState()
       await store.updateConfig({ aiNudgesEnabled: false })
 
-      expect(window.milo?.nudge.getConfig).toHaveBeenCalled()
+      expect(milo?.nudge.getConfig).toHaveBeenCalled()
     })
 
     it('handles errors gracefully', async () => {
-      window.milo.nudge.setConfig = vi.fn().mockRejectedValue(new Error('Update error'))
+      milo.nudge.setConfig = vi.fn().mockRejectedValue(new Error('Update error'))
 
       const store = useNudgeStore.getState()
       await store.updateConfig({ aiNudgesEnabled: false })
 
       // Should not throw
-      expect(window.milo?.nudge.getConfig).not.toHaveBeenCalled()
+      expect(milo?.nudge.getConfig).not.toHaveBeenCalled()
     })
   })
 
@@ -313,12 +314,12 @@ describe('nudgeStore', () => {
       const store = useNudgeStore.getState()
       await store.fetchDriftStatus()
 
-      expect(window.milo?.nudge.getDriftStatus).toHaveBeenCalled()
+      expect(milo?.nudge.getDriftStatus).toHaveBeenCalled()
       expect(useNudgeStore.getState().driftStatus).toEqual(mockDriftStatus)
     })
 
     it('handles errors gracefully', async () => {
-      window.milo.nudge.getDriftStatus = vi.fn().mockRejectedValue(new Error('Drift error'))
+      milo.nudge.getDriftStatus = vi.fn().mockRejectedValue(new Error('Drift error'))
 
       const store = useNudgeStore.getState()
       await store.fetchDriftStatus()
@@ -328,7 +329,7 @@ describe('nudgeStore', () => {
     })
 
     it('handles null response', async () => {
-      window.milo.nudge.getDriftStatus = vi.fn().mockResolvedValue(null)
+      milo.nudge.getDriftStatus = vi.fn().mockResolvedValue(null)
 
       const store = useNudgeStore.getState()
       await store.fetchDriftStatus()
@@ -342,12 +343,12 @@ describe('nudgeStore', () => {
       const store = useNudgeStore.getState()
       store.setupEventListener()
 
-      expect(window.milo?.events.onNudgeTriggered).toHaveBeenCalled()
+      expect(milo?.events.onNudgeTriggered).toHaveBeenCalled()
     })
 
     it('returns cleanup function', () => {
       const mockCleanup = vi.fn()
-      window.milo.events.onNudgeTriggered = vi.fn().mockReturnValue(mockCleanup)
+      milo.events.onNudgeTriggered = vi.fn().mockReturnValue(mockCleanup)
 
       const store = useNudgeStore.getState()
       const cleanup = store.setupEventListener()
@@ -356,7 +357,7 @@ describe('nudgeStore', () => {
     })
 
     it('returns no-op when events not available', () => {
-      window.milo.events.onNudgeTriggered = undefined as any
+      milo.events.onNudgeTriggered = undefined as any
 
       const store = useNudgeStore.getState()
       const cleanup = store.setupEventListener()
@@ -368,7 +369,7 @@ describe('nudgeStore', () => {
 
     it('adds nudge when event is triggered', () => {
       let eventCallback: ((nudge: NudgeEvent) => void) | null = null
-      window.milo.events.onNudgeTriggered = vi.fn().mockImplementation((cb) => {
+      milo.events.onNudgeTriggered = vi.fn().mockImplementation((cb) => {
         eventCallback = cb
         return () => {}
       })

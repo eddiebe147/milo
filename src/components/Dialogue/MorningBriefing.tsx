@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useEffect } from 'react'
 import { Sun, Target, AlertTriangle, CheckCircle } from 'lucide-react'
 import { DialogueModal } from './DialogueModal'
@@ -57,7 +58,7 @@ export const MorningBriefing: React.FC<MorningBriefingProps> = ({
 
     // Update task priorities based on briefing
     for (const signal of lastBriefing.signalTasks) {
-      await window.milo?.tasks.update(signal.taskId, {
+      await milo?.tasks.update(signal.taskId, {
         priority: signal.priority,
         rationale: signal.rationale,
       })

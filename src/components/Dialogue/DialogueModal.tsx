@@ -44,7 +44,7 @@ export const DialogueModal: React.FC<DialogueModalProps> = ({
 
   // Get voice settings from store
   const { settings } = useSettingsStore()
-  const { voiceEnabled, voiceId, voiceRate } = settings
+  const { voiceEnabled, voiceMuted, voiceId, voiceRate } = settings
 
   // Initialize TTS hook with settings
   const { speak } = useTextToSpeech({
@@ -59,7 +59,7 @@ export const DialogueModal: React.FC<DialogueModalProps> = ({
 
   // Speak new assistant messages when modal is open
   useEffect(() => {
-    if (!isOpen || !voiceEnabled) return
+    if (!isOpen || !voiceEnabled || voiceMuted) return
 
     // Find the latest assistant message that hasn't been spoken yet
     const latestAssistantMessage = [...messages]
@@ -70,7 +70,7 @@ export const DialogueModal: React.FC<DialogueModalProps> = ({
       addSpokenMessage(latestAssistantMessage.id)
       speak(latestAssistantMessage.content)
     }
-  }, [messages, isOpen, voiceEnabled, speak])
+  }, [messages, isOpen, voiceEnabled, voiceMuted, speak])
 
   // Stop speech when modal closes
   useEffect(() => {

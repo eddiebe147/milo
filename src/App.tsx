@@ -1,15 +1,17 @@
+import { milo } from "@/lib/api"
 import { useState, useEffect } from 'react'
 import { DashboardV3 } from '@/components/Dashboard/DashboardV3'
 import { MorningBriefing, EveningReview } from '@/components/Dialogue'
 import { PlanImporter } from '@/components/PlanImport'
 import { CRTOverlay } from '@/components/ui/CRTOverlay'
 import { TitleBar } from '@/components/ui/TitleBar'
+import { MobileNav } from '@/components/ui/MobileNav'
 import { NudgeToastContainer } from '@/components/ui/NudgeToast'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { CommandPalette, useCommandPalette } from '@/components/CommandPalette'
 import { ThemeSettings, ApiKeySettings, SettingsPage } from '@/components/Settings'
 import { Onboarding } from '@/components/Onboarding'
-import { VoiceAssistantButton } from '@/components/VoiceAssistant'
+// VoiceGaugeDrawer is now integrated into ChatBottomPanel
 import { useNudgeStore, useAIStore, useTasksStore } from '@/stores'
 import { useThemeColors } from '@/hooks/useThemeColors'
 import { ModalProvider, useModal } from '@/contexts/ModalContext'
@@ -56,17 +58,17 @@ function AppContent() {
 
   // Listen for navigation events from main process
   useEffect(() => {
-    const unsubMorning = window.milo?.events.onShowMorningBriefing(() => {
+    const unsubMorning = milo?.events.onShowMorningBriefing(() => {
       startMorningBriefing()
       openModalWithType('morningBriefing')
     })
 
-    const unsubEvening = window.milo?.events.onShowEveningReview(() => {
+    const unsubEvening = milo?.events.onShowEveningReview(() => {
       startEveningReview()
       openModalWithType('eveningReview')
     })
 
-    const unsubSettings = window.milo?.events.onShowSettings(() => {
+    const unsubSettings = milo?.events.onShowSettings(() => {
       setCurrentView('settings')
     })
 
@@ -94,7 +96,7 @@ function AppContent() {
       <TitleBar />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden relative">
         {currentView === 'onboarding' && (
           <Onboarding onComplete={() => setCurrentView('dashboard')} />
         )}
@@ -108,6 +110,9 @@ function AppContent() {
           <SettingsPage onBack={() => setCurrentView('dashboard')} />
         )}
       </main>
+
+      {/* Mobile Navigation */}
+      <MobileNav currentView={currentView} onNavigate={setCurrentView} />
 
       {/* Dialogue Modals */}
       <MorningBriefing
@@ -143,8 +148,7 @@ function AppContent() {
         onNavigate={setCurrentView}
       />
 
-      {/* Voice Assistant Button - Show only on dashboard */}
-      {currentView === 'dashboard' && <VoiceAssistantButton />}
+      {/* Voice Gauge Drawer is now integrated into ChatBottomPanel */}
     </div>
   )
 }

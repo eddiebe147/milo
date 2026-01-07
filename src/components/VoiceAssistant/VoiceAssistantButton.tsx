@@ -65,7 +65,7 @@ export const VoiceAssistantButton: React.FC = () => {
 
   // Watch for new AI responses and speak them
   useEffect(() => {
-    if (!settings.voiceEnabled || !isProcessing) return
+    if (!settings.voiceEnabled || settings.voiceMuted || !isProcessing) return
 
     // Check if a new message was added
     if (messages.length > lastMessageCountRef.current) {
@@ -83,7 +83,7 @@ export const VoiceAssistantButton: React.FC = () => {
     }
 
     lastMessageCountRef.current = messages.length
-  }, [messages, isProcessing, settings.voiceEnabled]) // speak removed - using ref
+  }, [messages, isProcessing, settings.voiceEnabled, settings.voiceMuted])
 
   // Cleanup on unmount
   useEffect(() => {

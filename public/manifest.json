@@ -1,0 +1,18 @@
+{
+    "name": "MILO - Mission Intelligence Life Operator",
+    "short_name": "MILO",
+    "description": "Signal-to-Noise Life Planner",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#00FF41",
+    "icons": [
+        {
+            "src": "resources/icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "orientation": "portrait"
+}

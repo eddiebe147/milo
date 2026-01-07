@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { ProcessedPlan, PlanApplyResult } from '../types/milo-api'
 
@@ -71,7 +72,7 @@ export const usePlanStore = create<PlanStoreState>((set, get) => ({
     set({ isProcessing: true, error: null, currentStep: 'processing' })
 
     try {
-      const result = await window.milo?.ai.processPlan(rawInput, additionalContext || undefined)
+      const result = await milo?.ai.processPlan(rawInput, additionalContext || undefined)
 
       if (result) {
         set({
@@ -119,7 +120,7 @@ export const usePlanStore = create<PlanStoreState>((set, get) => ({
     set({ isApplying: true, error: null, currentStep: 'applying' })
 
     try {
-      const result = await window.milo?.plan.apply(planToApply)
+      const result = await milo?.plan.apply(planToApply)
 
       if (result?.success) {
         set({

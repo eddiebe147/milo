@@ -6,6 +6,7 @@ import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
 import { ChatHistory } from './ChatHistory'
 import { ApiKeySettings } from '../Settings/ApiKeySettings'
+import { VoiceGaugeDrawer } from '@/components/VoiceAssistant'
 
 /**
  * ChatBottomPanel - Bottom-docked collapsible chat panel with history
@@ -103,6 +104,7 @@ export const ChatBottomPanel: React.FC = () => {
     <div
       ref={panelRef}
       className={`
+        relative overflow-visible
         border-t border-pipboy-border bg-pipboy-background
         transition-all duration-300 ease-out
         ${isExpanded ? 'shadow-lg shadow-pipboy-green/10' : ''}
@@ -166,6 +168,9 @@ export const ChatBottomPanel: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-1">
+                {/* Voice Gauge Trigger */}
+                <VoiceGaugeDrawer />
+
                 <Button
                   onClick={() => setIsSettingsOpen(true)}
                   variant="ghost"
@@ -231,8 +236,8 @@ export const ChatBottomPanel: React.FC = () => {
           </div>
         </div>
       ) : (
-        // COLLAPSED STATE
-        <div className="flex items-center gap-2 px-3 py-2">
+        // COLLAPSED STATE - overflow-visible allows gauge to break out
+        <div className="flex items-center gap-2 px-3 py-2 overflow-visible">
           <MessageSquare size={16} className="text-pipboy-green-dim flex-shrink-0" />
 
           <div className="flex-1">
@@ -241,6 +246,11 @@ export const ChatBottomPanel: React.FC = () => {
               disabled={isGenerating}
               placeholder="Chat with MILO..."
             />
+          </div>
+
+          {/* Voice Gauge Trigger - Swiss Army knife style, breaks out of the box */}
+          <div className="relative">
+            <VoiceGaugeDrawer />
           </div>
 
           <Button

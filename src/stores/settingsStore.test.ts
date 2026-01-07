@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useSettingsStore } from './settingsStore'
 import type { UserSettings, AppClassification } from '../types'
@@ -61,9 +62,9 @@ describe('settingsStore', () => {
     // Reset mocks
     vi.clearAllMocks()
 
-    // Set up mock window.milo.classifications API
-    window.milo = {
-      ...window.milo,
+    // Set up mock milo.classifications API
+    milo = {
+      ...milo,
       classifications: {
         getAll: vi.fn().mockResolvedValue(mockClassifications),
         upsert: vi.fn().mockResolvedValue(mockClassification),
@@ -269,7 +270,7 @@ describe('settingsStore', () => {
 
       const state = useSettingsStore.getState()
       expect(state.classifications).toEqual(mockClassifications)
-      expect(window.milo.classifications.getAll).toHaveBeenCalledTimes(1)
+      expect(milo.classifications.getAll).toHaveBeenCalledTimes(1)
     })
 
     it('clears error state on successful load', async () => {
@@ -283,7 +284,7 @@ describe('settingsStore', () => {
 
     it('handles API errors', async () => {
       const errorMessage = 'Failed to fetch classifications'
-      window.milo.classifications.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.classifications.getAll = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useSettingsStore.getState()
       await store.loadClassifications()
@@ -305,7 +306,7 @@ describe('settingsStore', () => {
         ...mockClassification,
         defaultState: 'amber' as const,
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -316,7 +317,7 @@ describe('settingsStore', () => {
         isCustom: false,
       })
 
-      expect(window.milo.classifications.upsert).toHaveBeenCalledWith({
+      expect(milo.classifications.upsert).toHaveBeenCalledWith({
         appName: 'Visual Studio Code',
         bundleId: 'com.microsoft.VSCode',
         defaultState: 'amber',
@@ -339,7 +340,7 @@ describe('settingsStore', () => {
         isCustom: true,
         createdAt: '2024-12-28T10:10:00Z',
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(newClassification)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(newClassification)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -360,7 +361,7 @@ describe('settingsStore', () => {
         ...mockClassification,
         keywords: ['coding', 'development', 'programming'],
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -378,7 +379,7 @@ describe('settingsStore', () => {
 
     it('handles API errors', async () => {
       const errorMessage = 'Failed to update classification'
-      window.milo.classifications.upsert = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.classifications.upsert = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -391,7 +392,7 @@ describe('settingsStore', () => {
     })
 
     it('does not modify state if API returns null', async () => {
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(null)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(null)
 
       const initialClassifications = [...mockClassifications]
       const store = useSettingsStore.getState()
@@ -409,7 +410,7 @@ describe('settingsStore', () => {
         ...mockClassification,
         defaultState: 'amber' as const,
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(updatedClassification)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -428,13 +429,13 @@ describe('settingsStore', () => {
 
   describe('toggleAlwaysOnTop', () => {
     it('toggles always on top to true', async () => {
-      window.milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(true)
+      milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(true)
 
       const store = useSettingsStore.getState()
       const result = await store.toggleAlwaysOnTop()
 
       expect(result).toBe(true)
-      expect(window.milo.window.toggleAlwaysOnTop).toHaveBeenCalledTimes(1)
+      expect(milo.window.toggleAlwaysOnTop).toHaveBeenCalledTimes(1)
       expect(useSettingsStore.getState().settings.alwaysOnTop).toBe(true)
     })
 
@@ -442,7 +443,7 @@ describe('settingsStore', () => {
       useSettingsStore.setState({
         settings: { ...DEFAULT_SETTINGS, alwaysOnTop: true },
       })
-      window.milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(false)
+      milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(false)
 
       const store = useSettingsStore.getState()
       const result = await store.toggleAlwaysOnTop()
@@ -453,7 +454,7 @@ describe('settingsStore', () => {
 
     it('handles API errors and returns current state', async () => {
       const errorMessage = 'Failed to toggle'
-      window.milo.window.toggleAlwaysOnTop = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.window.toggleAlwaysOnTop = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useSettingsStore.getState()
       const result = await store.toggleAlwaysOnTop()
@@ -464,7 +465,7 @@ describe('settingsStore', () => {
     })
 
     it('preserves other settings when toggling', async () => {
-      window.milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(true)
+      milo.window.toggleAlwaysOnTop = vi.fn().mockResolvedValue(true)
 
       const store = useSettingsStore.getState()
       await store.toggleAlwaysOnTop()
@@ -525,7 +526,7 @@ describe('settingsStore', () => {
 
   describe('edge cases', () => {
     it('handles empty classifications array', async () => {
-      window.milo.classifications.getAll = vi.fn().mockResolvedValue([])
+      milo.classifications.getAll = vi.fn().mockResolvedValue([])
 
       const store = useSettingsStore.getState()
       await store.loadClassifications()
@@ -538,7 +539,7 @@ describe('settingsStore', () => {
         ...mockClassification,
         keywords: undefined,
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(classificationNoKeywords)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(classificationNoKeywords)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -547,7 +548,7 @@ describe('settingsStore', () => {
         isCustom: true,
       })
 
-      expect(window.milo.classifications.upsert).toHaveBeenCalled()
+      expect(milo.classifications.upsert).toHaveBeenCalled()
     })
 
     it('handles classification with no bundle ID', async () => {
@@ -555,7 +556,7 @@ describe('settingsStore', () => {
         ...mockClassification,
         bundleId: undefined,
       }
-      window.milo.classifications.upsert = vi.fn().mockResolvedValue(classificationNoBundleId)
+      milo.classifications.upsert = vi.fn().mockResolvedValue(classificationNoBundleId)
 
       const store = useSettingsStore.getState()
       await store.updateClassification({
@@ -564,7 +565,7 @@ describe('settingsStore', () => {
         isCustom: true,
       })
 
-      expect(window.milo.classifications.upsert).toHaveBeenCalled()
+      expect(milo.classifications.upsert).toHaveBeenCalled()
     })
 
     it('handles empty work days array', () => {
@@ -621,8 +622,8 @@ describe('settingsStore', () => {
 
       await Promise.all([loadPromise, updatePromise])
 
-      expect(window.milo.classifications.getAll).toHaveBeenCalled()
-      expect(window.milo.classifications.upsert).toHaveBeenCalled()
+      expect(milo.classifications.getAll).toHaveBeenCalled()
+      expect(milo.classifications.upsert).toHaveBeenCalled()
     })
   })
 

@@ -7,9 +7,11 @@ import type {
   EveningReviewOutput,
   TaskParserOutput,
   ProcessedPlan,
-} from './ai/ClaudeClient'
+  AIProviderType,
+} from './ai/providers'
 import type { NudgeEvent } from './services/NudgeManager'
 import type { TaskActionPlan, ExecutionResult, ExecutionTarget } from './services/TaskExecutor'
+import type { UpdateInfo } from './services/UpdateChecker'
 
 // Nudge configuration type (matches NudgeManager)
 interface NudgeConfig {
@@ -123,8 +125,12 @@ export interface MiloAPI {
     status: () => Promise<CurrentActivityState>
   }
   ai: {
-    initialize: (apiKey: string) => Promise<boolean>
+    initialize: (apiKey: string, provider?: AIProviderType, model?: string) => Promise<boolean>
     isInitialized: () => Promise<boolean>
+    getProviderType: () => Promise<AIProviderType>
+    getModel: () => Promise<string | null>
+    getProviderModels: (providerType: AIProviderType) => Promise<Array<{ id: string; name: string }>>
+    getDefaultModel: (providerType: AIProviderType) => Promise<string>
     morningBriefing: (input: MorningBriefingInput) => Promise<MorningBriefingOutput>
     eveningReview: (input: EveningReviewInput) => Promise<EveningReviewOutput>
     parseTasks: (text: string) => Promise<TaskParserOutput>
@@ -157,6 +163,8 @@ export interface MiloAPI {
   settings: {
     get: () => Promise<{
       apiKey: string | null
+      apiProvider: AIProviderType
+      apiModel: string | null
       refillMode: 'endless' | 'daily_reset'
       workStartTime: string
       workEndTime: string
@@ -174,6 +182,8 @@ export interface MiloAPI {
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
+    getAiSettings: () => Promise<{ apiKey: string | null; apiProvider: AIProviderType; apiModel: string | null }>
+    saveAiSettings: (settings: { apiKey?: string | null; apiProvider?: AIProviderType; apiModel?: string | null }) => Promise<boolean>
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
@@ -186,6 +196,10 @@ export interface MiloAPI {
     isAvailable: () => Promise<boolean>
     enable: () => Promise<boolean>
     disable: () => Promise<boolean>
+  }
+  updates: {
+    check: () => Promise<UpdateInfo>
+    getVersion: () => Promise<string>
   }
   chat: {
     getAllConversations: () => Promise<ChatConversation[]>
@@ -338,10 +352,17 @@ contextBridge.exposeInMainWorld('milo', {
     status: () => ipcRenderer.invoke('monitoring:status'),
   },
 
-  // AI / Claude integration
+  // AI Provider integration
   ai: {
-    initialize: (apiKey: string) => ipcRenderer.invoke('ai:initialize', apiKey),
+    initialize: (apiKey: string, provider?: AIProviderType, model?: string) =>
+      ipcRenderer.invoke('ai:initialize', apiKey, provider, model),
     isInitialized: () => ipcRenderer.invoke('ai:isInitialized'),
+    getProviderType: () => ipcRenderer.invoke('ai:getProviderType'),
+    getModel: () => ipcRenderer.invoke('ai:getModel'),
+    getProviderModels: (providerType: AIProviderType) =>
+      ipcRenderer.invoke('ai:getProviderModels', providerType),
+    getDefaultModel: (providerType: AIProviderType) =>
+      ipcRenderer.invoke('ai:getDefaultModel', providerType),
     morningBriefing: (input: MorningBriefingInput) =>
       ipcRenderer.invoke('ai:morningBriefing', input),
     eveningReview: (input: EveningReviewInput) =>
@@ -384,6 +405,9 @@ contextBridge.exposeInMainWorld('milo', {
     get: () => ipcRenderer.invoke('settings:get'),
     getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
     saveApiKey: (apiKey: string | null) => ipcRenderer.invoke('settings:saveApiKey', apiKey),
+    getAiSettings: () => ipcRenderer.invoke('settings:getAiSettings'),
+    saveAiSettings: (settings: { apiKey?: string | null; apiProvider?: AIProviderType; apiModel?: string | null }) =>
+      ipcRenderer.invoke('settings:saveAiSettings', settings),
     getRefillMode: () => ipcRenderer.invoke('settings:getRefillMode'),
     saveRefillMode: (mode: 'endless' | 'daily_reset') => ipcRenderer.invoke('settings:saveRefillMode', mode),
     update: (updates: Record<string, unknown>) => ipcRenderer.invoke('settings:update', updates),
@@ -398,6 +422,12 @@ contextBridge.exposeInMainWorld('milo', {
     isAvailable: () => ipcRenderer.invoke('analytics:isAvailable'),
     enable: () => ipcRenderer.invoke('analytics:enable'),
     disable: () => ipcRenderer.invoke('analytics:disable'),
+  },
+
+  // Update checker
+  updates: {
+    check: () => ipcRenderer.invoke('updates:check'),
+    getVersion: () => ipcRenderer.invoke('updates:getVersion'),
   },
 
   // Chat conversations & messages

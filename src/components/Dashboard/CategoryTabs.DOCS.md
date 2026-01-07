@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 # CategoryTabs Component Documentation
 
 ## Overview

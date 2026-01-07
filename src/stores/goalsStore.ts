@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { Goal } from '../types'
 
@@ -37,7 +38,7 @@ export const useGoalsStore = create<GoalsState>((set) => ({
   fetchGoals: async () => {
     set({ isLoading: true, error: null })
     try {
-      const goals = await window.milo.goals.getAll()
+      const goals = await milo.goals.getAll()
       set({ goals, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -47,7 +48,7 @@ export const useGoalsStore = create<GoalsState>((set) => ({
   fetchHierarchy: async () => {
     set({ isLoading: true, error: null })
     try {
-      const hierarchy = await window.milo.goals.getHierarchy()
+      const hierarchy = await milo.goals.getHierarchy()
       set({ hierarchy, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -56,7 +57,7 @@ export const useGoalsStore = create<GoalsState>((set) => ({
 
   createGoal: async (goal) => {
     try {
-      const newGoal = await window.milo.goals.create(goal)
+      const newGoal = await milo.goals.create(goal)
       if (newGoal) {
         set((state) => ({
           goals: [newGoal, ...state.goals],
@@ -75,7 +76,7 @@ export const useGoalsStore = create<GoalsState>((set) => ({
 
   updateGoal: async (id, updates) => {
     try {
-      const updatedGoal = await window.milo.goals.update(id, updates)
+      const updatedGoal = await milo.goals.update(id, updates)
       if (updatedGoal) {
         set((state) => {
           const oldGoal = state.goals.find((g) => g.id === id)
@@ -113,7 +114,7 @@ export const useGoalsStore = create<GoalsState>((set) => ({
 
   deleteGoal: async (id) => {
     try {
-      const success = await window.milo.goals.delete(id)
+      const success = await milo.goals.delete(id)
       if (success) {
         set((state) => {
           const goal = state.goals.find((g) => g.id === id)

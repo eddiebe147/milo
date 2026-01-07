@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import waveformImage from '@/assets/milo-waveform.png'
+import waveformImage from '../../assets/milo-waveform.png'
 
 interface WaveformMonitorProps {
     isActive?: boolean
@@ -73,7 +73,7 @@ export const WaveformMonitor: React.FC<WaveformMonitorProps> = ({
                                     ? `rgba(0, 255, 65, ${0.7 + Math.random() * 0.3})`
                                     : 'rgba(0, 255, 65, 0.4)',
                                 boxShadow: isActive
-                                    ? `0 0 ${4 + height/20}px rgba(0, 255, 65, 0.6)`
+                                    ? `0 0 ${4 + height / 20}px rgba(0, 255, 65, 0.6)`
                                     : '0 0 2px rgba(0, 255, 65, 0.3)'
                             }}
                         />

@@ -1,7 +1,8 @@
+import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import type { Task } from '../types'
 
-// Import types from preload (available via window.milo)
+// Import types from preload (available via milo)
 export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
 export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
@@ -108,8 +109,8 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   fetchTasks: async () => {
     set({ isLoading: true, error: null })
     try {
-      const tasks = await window.milo.tasks.getToday()
-      const activeTask = await window.milo.tasks.getActive()
+      const tasks = await milo.tasks.getToday()
+      const activeTask = await milo.tasks.getActive()
       set({ tasks, activeTask, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -119,8 +120,8 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   fetchTodaysTasks: async () => {
     set({ isLoading: true, error: null })
     try {
-      const tasks = await window.milo.tasks.getToday()
-      const activeTask = await window.milo.tasks.getActive()
+      const tasks = await milo.tasks.getToday()
+      const activeTask = await milo.tasks.getActive()
       set({ tasks, activeTask, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -129,7 +130,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   createTask: async (task) => {
     try {
-      const newTask = await window.milo.tasks.create(task)
+      const newTask = await milo.tasks.create(task)
       if (newTask) {
         set((state) => ({
           tasks: [newTask, ...state.tasks],
@@ -147,7 +148,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   updateTask: async (id, updates) => {
     try {
-      const updatedTask = await window.milo.tasks.update(id, updates)
+      const updatedTask = await milo.tasks.update(id, updates)
       if (updatedTask) {
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? updatedTask : t)),
@@ -166,7 +167,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   deleteTask: async (id) => {
     try {
-      const success = await window.milo.tasks.delete(id)
+      const success = await milo.tasks.delete(id)
       if (success) {
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
@@ -187,10 +188,10 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   startTask: async (id) => {
     try {
-      const task = await window.milo.tasks.start(id)
+      const task = await milo.tasks.start(id)
       if (task) {
         // Record work on this task for continuity tracking
-        await window.milo.tasks.recordWork(id)
+        await milo.tasks.recordWork(id)
         // Refresh everything since starting affects active state
         await get().fetchSignalQueue()
       }
@@ -203,7 +204,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   completeTask: async (id) => {
     try {
-      const task = await window.milo.tasks.complete(id)
+      const task = await milo.tasks.complete(id)
       if (task) {
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? task : t)),
@@ -225,7 +226,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   deferTask: async (id) => {
     try {
-      const task = await window.milo.tasks.defer(id)
+      const task = await milo.tasks.defer(id)
       if (task) {
         set((state) => ({
           tasks: state.tasks.filter((t) => t.id !== id),
@@ -252,8 +253,8 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   fetchAllTasks: async () => {
     set({ isLoading: true, error: null })
     try {
-      const allTasks = await window.milo.tasks.getAllIncomplete()
-      const activeTask = await window.milo.tasks.getActive()
+      const allTasks = await milo.tasks.getAllIncomplete()
+      const activeTask = await milo.tasks.getActive()
       set({ allTasks, activeTask, isLoading: false })
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false })
@@ -264,10 +265,10 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const { signalQueueSize } = get()
-      const signalQueue = await window.milo.tasks.getSignalQueue(signalQueueSize)
+      const signalQueue = await milo.tasks.getSignalQueue(signalQueueSize)
       const signalQueueIds = signalQueue.map((t) => t.id)
-      const backlog = await window.milo.tasks.getBacklog(signalQueueIds)
-      const activeTask = await window.milo.tasks.getActive()
+      const backlog = await milo.tasks.getBacklog(signalQueueIds)
+      const activeTask = await milo.tasks.getActive()
 
       set({ signalQueue, backlog, activeTask, isLoading: false })
     } catch (error) {
@@ -291,16 +292,16 @@ export const useTasksStore = create<TasksState>((set, get) => ({
         // Filter out completed tasks from current queue
         const remainingQueue = currentQueue.filter(t => t.status !== 'completed')
         const remainingIds = remainingQueue.map(t => t.id)
-        const backlog = await window.milo.tasks.getBacklog(remainingIds)
+        const backlog = await milo.tasks.getBacklog(remainingIds)
 
         set({ signalQueue: remainingQueue, backlog })
         return
       }
 
       // Endless mode or empty queue - refill to full size
-      const signalQueue = await window.milo.tasks.getSignalQueue(signalQueueSize)
+      const signalQueue = await milo.tasks.getSignalQueue(signalQueueSize)
       const signalQueueIds = signalQueue.map((t) => t.id)
-      const backlog = await window.milo.tasks.getBacklog(signalQueueIds)
+      const backlog = await milo.tasks.getBacklog(signalQueueIds)
 
       set({ signalQueue, backlog })
     } catch (error) {
@@ -314,9 +315,9 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ signalQueueSize: validSize })
     // Fetch new queue with new size directly (bypasses refillMode logic)
     try {
-      const signalQueue = await window.milo.tasks.getSignalQueue(validSize)
+      const signalQueue = await milo.tasks.getSignalQueue(validSize)
       const signalQueueIds = signalQueue.map((t) => t.id)
-      const backlog = await window.milo.tasks.getBacklog(signalQueueIds)
+      const backlog = await milo.tasks.getBacklog(signalQueueIds)
       set({ signalQueue, backlog })
     } catch (error) {
       set({ error: (error as Error).message })
@@ -335,7 +336,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
     try {
       // Persist to database
-      await window.milo.tasks.reorderSignalQueue(taskIds)
+      await milo.tasks.reorderSignalQueue(taskIds)
     } catch (error) {
       // Rollback on failure
       set({ signalQueue: originalQueue, error: (error as Error).message })
@@ -348,7 +349,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   fetchContinuityTasks: async () => {
     try {
-      const continuityTasks = await window.milo.tasks.getWorkedYesterday()
+      const continuityTasks = await milo.tasks.getWorkedYesterday()
       set({ continuityTasks })
     } catch (error) {
       set({ error: (error as Error).message })
@@ -363,7 +364,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   recordWorkOnTask: async (id: string) => {
     try {
-      const task = await window.milo.tasks.recordWork(id)
+      const task = await milo.tasks.recordWork(id)
       if (task) {
         set((state) => ({
           allTasks: state.allTasks.map((t) => (t.id === id ? task : t)),
@@ -384,7 +385,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   fetchTasksByCategory: async (categoryId: string) => {
     try {
-      return await window.milo.tasks.getByCategory(categoryId)
+      return await milo.tasks.getByCategory(categoryId)
     } catch (error) {
       set({ error: (error as Error).message })
       return []
@@ -398,7 +399,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   classifyTask: async (id: string) => {
     set({ isExecuting: true, executingTaskId: id, executionError: null })
     try {
-      const actionPlan = await window.milo.taskExecution.classifyTask(id)
+      const actionPlan = await milo.taskExecution.classifyTask(id)
       set({ currentActionPlan: actionPlan, isExecuting: false })
       return actionPlan
     } catch (error) {
@@ -412,16 +413,16 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ isExecuting: true, executingTaskId: id, executionError: null, currentActionPlan: null })
     try {
       // First, start the task normally (marks as active)
-      const task = await window.milo.tasks.start(id)
+      const task = await milo.tasks.start(id)
       if (!task) {
         throw new Error('Failed to start task')
       }
 
       // Record work for continuity tracking
-      await window.milo.tasks.recordWork(id)
+      await milo.tasks.recordWork(id)
 
       // Execute the task using the smart executor
-      const result = await window.milo.taskExecution.executeTask(id)
+      const result = await milo.taskExecution.executeTask(id)
 
       // Refresh the signal queue
       await get().fetchSignalQueue()
@@ -465,12 +466,12 @@ export const useTasksStore = create<TasksState>((set, get) => ({
 
   // Setup listener for external task changes (e.g., from chat tool calls)
   setupTasksChangedListener: () => {
-    if (!window.milo?.events?.onTasksChanged) {
+    if (!milo?.events?.onTasksChanged) {
       console.warn('[TasksStore] Tasks changed event listener not available')
-      return () => {}
+      return () => { }
     }
 
-    const cleanup = window.milo.events.onTasksChanged(() => {
+    const cleanup = milo.events.onTasksChanged(() => {
       console.log('[TasksStore] Tasks changed externally, refreshing...')
       get().fetchSignalQueue()
     })

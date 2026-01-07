@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 # ChatSlidePanel Component
 
 A slide-out chat panel component for the MILO productivity app with a Pip-Boy inspired terminal aesthetic.

@@ -1,105 +1,22 @@
+import { milo } from "@/lib/api"
 // Global type declaration for the milo API exposed via contextBridge
-import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState, ScoreBreakdown } from './index'
+import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from './index'
 
-// AI input/output types (mirrors electron/ai/ClaudeClient.ts)
-export interface MorningBriefingInput {
-  goals: Goal[]
-  tasks: Task[]
-  carryoverTasks: Task[]
-  calendarEvents?: { start: string; end: string; title: string }[]
-  todayDate: string
-}
+// Re-export AI input/output types
+export type {
+  MorningBriefingInput,
+  MorningBriefingOutput,
+  EveningReviewInput,
+  EveningReviewOutput,
+  TaskParserOutput,
+  ProcessedPlan,
+  AIProviderType
+} from '../../electron/ai/providers'
 
-export interface MorningBriefingOutput {
-  signalTasks: Array<{
-    taskId: string
-    rationale: string
-    priority: number
-  }>
-  briefing: string
-  warnings: string[]
-}
+export type { NudgeEvent } from '../../electron/services/NudgeManager'
+export type { TaskActionPlan, ExecutionResult, ExecutionTarget, TaskActionType } from '../../electron/services/TaskExecutor'
 
-export interface EveningReviewInput {
-  signalTasks: Task[]
-  completedTasks: Task[]
-  score: DailyScore
-  activitySummary: {
-    greenMinutes: number
-    amberMinutes: number
-    redMinutes: number
-  }
-  todayDate: string
-}
-
-export interface EveningReviewOutput {
-  summary: {
-    completed: number
-    total: number
-    focusMinutes: number
-    driftMinutes: number
-  }
-  analysis: string
-  wins: string[]
-  improvements: string[]
-  carryover: Array<{
-    taskId: string
-    reason: string
-    recommendation: 'defer' | 'tomorrow' | 'break_down'
-  }>
-  tomorrowFocus: string
-}
-
-export interface ParsedTask {
-  title: string
-  description?: string
-  dueDate?: string
-  priority: 'high' | 'medium' | 'low'
-  goalHint?: string
-}
-
-export interface TaskParserOutput {
-  tasks: ParsedTask[]
-  unparsed?: string
-}
-
-// Plan processor types (Haiku agent)
-export interface ProcessedPlan {
-  plan: {
-    title: string
-    summary: string
-    source: string
-  }
-  goals: Array<{
-    title: string
-    description: string
-    timeframe: 'yearly' | 'quarterly' | 'monthly' | 'weekly'
-    suggestedDeadline: string | null
-  }>
-  tasks: Array<{
-    title: string
-    description?: string
-    dueDate: string | null
-    priority: 'high' | 'medium' | 'low'
-    goalIndex: number | null
-    dependsOn: number[]
-  }>
-  clarifications: Array<{
-    item: string
-    question: string
-  }>
-  unparsed?: string
-}
-
-export interface PlanApplyResult {
-  success: boolean
-  goalsCreated: number
-  tasksCreated: number
-  goalIds: string[]
-  taskIds: string[]
-}
-
-// Nudge types (mirrors electron/services/NudgeManager.ts)
+// Nudge configuration type
 export interface NudgeConfig {
   firstNudgeThresholdMs: number
   nudgeCooldownMs: number
@@ -107,6 +24,7 @@ export interface NudgeConfig {
   aiNudgesEnabled: boolean
 }
 
+// Drift status type
 export interface DriftStatus {
   isInDriftState: boolean
   currentDriftMinutes: number
@@ -115,35 +33,8 @@ export interface DriftStatus {
   currentApp: string
 }
 
-export interface NudgeEvent {
-  message: string
-  driftMinutes: number
-  currentApp: string
-  timestamp: Date
-  isAiGenerated: boolean
-}
-
-// Task execution types (mirrors electron/services/TaskExecutor.ts)
-export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
-export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
-
-export interface TaskActionPlan {
-  actionType: TaskActionType
-  prompt: string
-  projectPath?: string | null
-  searchQueries?: string[]
-  reasoning: string
-}
-
-export interface ExecutionResult {
-  success: boolean
-  actionType: TaskActionType | ExecutionTarget
-  message: string
-  error?: string
-}
-
-// Theme colors type (backend format)
-export interface BackendThemeColors {
+// Theme colors type
+export interface ThemeColors {
   themePrimaryColor: string
   themeAccentColor: string
   themeDangerColor: string
@@ -151,8 +42,8 @@ export interface BackendThemeColors {
   themeAiMessageColor: string
 }
 
-// Chat conversation types
-export interface ChatConversationDB {
+// Chat types
+export interface ChatConversation {
   id: string
   title: string
   createdAt: string
@@ -165,6 +56,14 @@ export interface ChatMessageDB {
   role: 'user' | 'assistant'
   content: string
   createdAt: string
+}
+
+export interface PlanApplyResult {
+  success: boolean
+  goalsCreated: number
+  tasksCreated: number
+  goalIds: string[]
+  taskIds: string[]
 }
 
 export interface MiloAPI {
@@ -182,7 +81,7 @@ export interface MiloAPI {
     onShowSettings: (callback: () => void) => () => void
     onToggleMonitoring: (callback: (paused: boolean) => void) => () => void
     onActivityStateChanged: (callback: (payload: { appName: string; windowTitle: string; state: ActivityState; stateChanged: boolean }) => void) => () => void
-    onNudgeTriggered: (callback: (nudge: NudgeEvent) => void) => () => void
+    onNudgeTriggered: (callback: (nudge: any) => void) => () => void
     onTasksChanged: (callback: () => void) => () => void
   }
   goals: {
@@ -204,7 +103,6 @@ export interface MiloAPI {
     start: (id: string) => Promise<Task | null>
     complete: (id: string) => Promise<Task | null>
     defer: (id: string) => Promise<Task | null>
-    // Signal Queue & Continuity methods
     getAllIncomplete: () => Promise<Task[]>
     getByCategory: (categoryId: string) => Promise<Task[]>
     getSignalQueue: (limit?: number) => Promise<Task[]>
@@ -238,16 +136,8 @@ export interface MiloAPI {
     calculate: () => Promise<DailyScore>
     getBreakdown: (date: string) => Promise<{
       score: number
-      breakdown: ScoreBreakdown
-      summary: {
-        signalMinutes: number
-        noiseMinutes: number
-        adjacentMinutes: number
-        totalMinutes: number
-        tasksCompleted: number
-        tasksTotal: number
-        streak: number
-      }
+      breakdown: { signalRatio: number; taskCompletionRatio: number; streakBonus: number; finalScore: number }
+      summary: { signalMinutes: number; noiseMinutes: number; adjacentMinutes: number; totalMinutes: number; tasksCompleted: number; tasksTotal: number; streak: number }
     }>
   }
   monitoring: {
@@ -259,17 +149,21 @@ export interface MiloAPI {
     status: () => Promise<CurrentActivityState>
   }
   ai: {
-    initialize: (apiKey: string) => Promise<boolean>
+    initialize: (apiKey: string, provider?: any, model?: string) => Promise<boolean>
     isInitialized: () => Promise<boolean>
-    morningBriefing: (input: MorningBriefingInput) => Promise<MorningBriefingOutput>
-    eveningReview: (input: EveningReviewInput) => Promise<EveningReviewOutput>
-    parseTasks: (text: string) => Promise<TaskParserOutput>
+    getProviderType: () => Promise<any>
+    getModel: () => Promise<string | null>
+    getProviderModels: (providerType: any) => Promise<Array<{ id: string; name: string }>>
+    getDefaultModel: (providerType: any) => Promise<string>
+    morningBriefing: (input: any) => Promise<any>
+    eveningReview: (input: any) => Promise<any>
+    parseTasks: (text: string) => Promise<any>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
-    processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+    processPlan: (rawPlan: string, context?: string) => Promise<any>
     chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>
   }
   plan: {
-    apply: (processedPlan: ProcessedPlan) => Promise<PlanApplyResult>
+    apply: (processedPlan: any) => Promise<PlanApplyResult>
   }
   nudge: {
     getConfig: () => Promise<NudgeConfig>
@@ -277,9 +171,9 @@ export interface MiloAPI {
     getDriftStatus: () => Promise<DriftStatus>
   }
   taskExecution: {
-    classifyTask: (taskId: string) => Promise<TaskActionPlan>
-    executeTask: (taskId: string) => Promise<ExecutionResult>
-    executeWithTarget: (target: ExecutionTarget, prompt: string, projectPath: string | null) => Promise<ExecutionResult>
+    classifyTask: (taskId: string) => Promise<any>
+    executeTask: (taskId: string) => Promise<any>
+    executeWithTarget: (target: any, prompt: string, projectPath: string | null) => Promise<any>
     generatePrompt: (taskId: string) => Promise<{ prompt: string; projectPath: string | null }>
     getAvailableProjects: () => Promise<string[]>
     hasClaudeCli: () => Promise<boolean>
@@ -287,6 +181,8 @@ export interface MiloAPI {
   settings: {
     get: () => Promise<{
       apiKey: string | null
+      apiProvider: any
+      apiModel: string | null
       refillMode: 'endless' | 'daily_reset'
       workStartTime: string
       workEndTime: string
@@ -304,12 +200,14 @@ export interface MiloAPI {
     }>
     getApiKey: () => Promise<string | null>
     saveApiKey: (apiKey: string | null) => Promise<boolean>
+    getAiSettings: () => Promise<{ apiKey: string | null; apiProvider: any; apiModel: string | null }>
+    saveAiSettings: (settings: { apiKey?: string | null; apiProvider?: any; apiModel?: string | null }) => Promise<boolean>
     getRefillMode: () => Promise<'endless' | 'daily_reset'>
     saveRefillMode: (mode: 'endless' | 'daily_reset') => Promise<boolean>
     update: (updates: Record<string, unknown>) => Promise<boolean>
-    getThemeColors: () => Promise<BackendThemeColors>
-    setThemeColor: (key: keyof BackendThemeColors, value: string) => Promise<boolean>
-    setThemeColors: (colors: Partial<BackendThemeColors>) => Promise<boolean>
+    getThemeColors: () => Promise<ThemeColors>
+    setThemeColor: (key: keyof ThemeColors, value: string) => Promise<boolean>
+    setThemeColors: (colors: Partial<ThemeColors>) => Promise<boolean>
   }
   analytics: {
     isEnabled: () => Promise<boolean>
@@ -318,12 +216,12 @@ export interface MiloAPI {
     disable: () => Promise<boolean>
   }
   chat: {
-    getAllConversations: () => Promise<ChatConversationDB[]>
-    getConversation: (id: string) => Promise<ChatConversationDB | null>
-    createConversation: (title?: string) => Promise<ChatConversationDB>
+    getAllConversations: () => Promise<ChatConversation[]>
+    getConversation: (id: string) => Promise<ChatConversation | null>
+    createConversation: (title?: string) => Promise<ChatConversation>
     updateConversationTitle: (id: string, title: string) => Promise<boolean>
     deleteConversation: (id: string) => Promise<boolean>
-    autoTitleConversation: (id: string) => Promise<ChatConversationDB | null>
+    autoTitleConversation: (id: string) => Promise<ChatConversation | null>
     getMessages: (conversationId: string) => Promise<ChatMessageDB[]>
     addMessage: (conversationId: string, role: 'user' | 'assistant', content: string) => Promise<ChatMessageDB>
     deleteMessage: (id: string) => Promise<boolean>

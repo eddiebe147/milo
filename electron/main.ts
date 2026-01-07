@@ -8,6 +8,8 @@ import {
   detectState,
   scoringEngine,
   nudgeManager,
+  checkForUpdates,
+  getCurrentVersion,
 } from './services'
 import * as analytics from './services/analytics'
 import {
@@ -20,9 +22,16 @@ import {
   settingsRepository,
   chatRepository,
 } from './repositories'
-import { claudeClient } from './ai/ClaudeClient'
+import {
+  getActiveProvider,
+  initializeProvider,
+  PROVIDER_MODELS,
+  DEFAULT_MODELS,
+  type AIProviderType,
+  type MorningBriefingInput,
+  type EveningReviewInput,
+} from './ai/providers'
 import type { Goal, Task } from '../src/types'
-import type { MorningBriefingInput, EveningReviewInput } from './ai/ClaudeClient'
 import { taskExecutor, type ExecutionTarget } from './services/TaskExecutor'
 import type { ThemeColors } from './repositories/settings'
 
@@ -249,18 +258,41 @@ function setupIPC(): void {
   ipcMain.handle('monitoring:toggle', () => activityMonitor.togglePause())
   ipcMain.handle('monitoring:status', () => activityMonitor.getStatus())
 
-  // AI / Claude integration
-  ipcMain.handle('ai:initialize', (_, apiKey: string) => {
-    claudeClient.initialize(apiKey)
-    return claudeClient.isInitialized()
+  // AI Provider integration
+  ipcMain.handle('ai:initialize', (_, apiKey: string, provider?: AIProviderType, model?: string) => {
+    const providerType = provider || settingsRepository.getApiProvider()
+    const modelId = model || settingsRepository.getApiModel() || undefined
+    initializeProvider(providerType, apiKey, modelId)
+    return getActiveProvider()?.isInitialized() ?? false
   })
 
-  ipcMain.handle('ai:isInitialized', () => claudeClient.isInitialized())
+  ipcMain.handle('ai:isInitialized', () => getActiveProvider()?.isInitialized() ?? false)
+
+  // AI Provider settings
+  ipcMain.handle('ai:getProviderType', () => {
+    const provider = getActiveProvider()
+    return provider?.type ?? settingsRepository.getApiProvider()
+  })
+
+  ipcMain.handle('ai:getModel', () => {
+    const provider = getActiveProvider()
+    return provider?.getModel() ?? settingsRepository.getApiModel()
+  })
+
+  ipcMain.handle('ai:getProviderModels', (_, providerType: AIProviderType) => {
+    return PROVIDER_MODELS[providerType] || []
+  })
+
+  ipcMain.handle('ai:getDefaultModel', (_, providerType: AIProviderType) => {
+    return DEFAULT_MODELS[providerType]
+  })
 
   ipcMain.handle('ai:morningBriefing', async (_, input: MorningBriefingInput) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       analytics.trackEvent('morning_briefing_started')
-      const result = await claudeClient.generateMorningBriefing(input)
+      const result = await provider.generateMorningBriefing(input)
       analytics.trackEvent('morning_briefing_completed')
       return result
     } catch (error) {
@@ -271,9 +303,11 @@ function setupIPC(): void {
   })
 
   ipcMain.handle('ai:eveningReview', async (_, input: EveningReviewInput) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       analytics.trackEvent('evening_review_started')
-      const result = await claudeClient.generateEveningReview(input)
+      const result = await provider.generateEveningReview(input)
       analytics.trackEvent('evening_review_completed')
       return result
     } catch (error) {
@@ -284,9 +318,11 @@ function setupIPC(): void {
   })
 
   ipcMain.handle('ai:parseTasks', async (_, text: string) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       const goals = goalsRepository.getAll()
-      return await claudeClient.parseTasks(text, goals)
+      return await provider.parseTasks(text, goals)
     } catch (error) {
       console.error('[IPC] Task parsing error:', error)
       throw error
@@ -294,19 +330,23 @@ function setupIPC(): void {
   })
 
   ipcMain.handle('ai:generateNudge', async (_, driftMinutes: number, currentApp: string) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       const activeTask = tasksRepository.getActive()
-      return await claudeClient.generateNudge(driftMinutes, currentApp, activeTask || undefined)
+      return await provider.generateNudge(driftMinutes, currentApp, activeTask || undefined)
     } catch (error) {
       console.error('[IPC] Nudge generation error:', error)
       throw error
     }
   })
 
-  // Plan processing (Haiku agent)
+  // Plan processing
   ipcMain.handle('ai:processPlan', async (_, rawPlan: string, context?: string) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
-      return await claudeClient.processPlan(rawPlan, context)
+      return await provider.processPlan(rawPlan, context)
     } catch (error) {
       console.error('[IPC] Plan processing error:', error)
       throw error
@@ -315,6 +355,8 @@ function setupIPC(): void {
 
   // Chat with MILO - now with tool execution
   ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> }) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       // Gather context - include task IDs for tool matching
       const goals = goalsRepository.getAll()
@@ -330,7 +372,7 @@ function setupIPC(): void {
       // Use all incomplete tasks for better context matching
       const tasksForContext = allIncompleteTasks.length > 0 ? allIncompleteTasks : todayTasks
 
-      const response = await claudeClient.chat({
+      const response = await provider.chat({
         message: input.message,
         conversationHistory: input.conversationHistory,
         context: {
@@ -566,12 +608,34 @@ function setupIPC(): void {
   ipcMain.handle('settings:getApiKey', () => settingsRepository.getApiKey())
   ipcMain.handle('settings:saveApiKey', (_, apiKey: string | null) => {
     settingsRepository.saveApiKey(apiKey)
-    // Initialize Claude client if API key is provided
+    // Initialize provider if API key is provided
     if (apiKey) {
-      claudeClient.initialize(apiKey)
-      console.log('[Settings] Claude client initialized with saved API key')
+      const providerType = settingsRepository.getApiProvider()
+      const model = settingsRepository.getApiModel() || undefined
+      initializeProvider(providerType, apiKey, model)
+      console.log(`[Settings] ${providerType} provider initialized with saved API key`)
     }
     return true
+  })
+
+  // Full AI settings save (provider, model, and key)
+  ipcMain.handle('settings:saveAiSettings', (_, settings: { apiKey?: string | null; apiProvider?: AIProviderType; apiModel?: string | null }) => {
+    settingsRepository.saveAiSettings(settings)
+    // Re-initialize provider if we have an API key
+    const currentSettings = settingsRepository.getAiSettings()
+    if (currentSettings.apiKey) {
+      initializeProvider(
+        currentSettings.apiProvider,
+        currentSettings.apiKey,
+        currentSettings.apiModel || undefined
+      )
+      console.log(`[Settings] ${currentSettings.apiProvider} provider initialized`)
+    }
+    return true
+  })
+
+  ipcMain.handle('settings:getAiSettings', () => {
+    return settingsRepository.getAiSettings()
   })
   ipcMain.handle('settings:getRefillMode', () => settingsRepository.getRefillMode())
   ipcMain.handle('settings:saveRefillMode', (_, mode: 'endless' | 'daily_reset') => {
@@ -604,15 +668,21 @@ function setupIPC(): void {
     return true
   })
 
+  // Update checker
+  ipcMain.handle('updates:check', () => checkForUpdates())
+  ipcMain.handle('updates:getVersion', () => getCurrentVersion())
+
   // Task execution (smart task automation)
   ipcMain.handle('taskExecution:classifyTask', async (_, taskId: string) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       const task = tasksRepository.getById(taskId)
       if (!task) {
         throw new Error(`Task not found: ${taskId}`)
       }
       const projects = taskExecutor.getProjects()
-      return await claudeClient.classifyTaskAction(task, projects)
+      return await provider.classifyTaskAction(task, projects)
     } catch (error) {
       console.error('[IPC] Task classification error:', error)
       throw error
@@ -620,6 +690,8 @@ function setupIPC(): void {
   })
 
   ipcMain.handle('taskExecution:executeTask', async (_, taskId: string) => {
+    const provider = getActiveProvider()
+    if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       const task = tasksRepository.getById(taskId)
       if (!task) {
@@ -628,7 +700,7 @@ function setupIPC(): void {
 
       // First, classify the task
       const projects = taskExecutor.getProjects()
-      const actionPlan = await claudeClient.classifyTaskAction(task, projects)
+      const actionPlan = await provider.classifyTaskAction(task, projects)
 
       // Then execute based on the plan
       return await taskExecutor.execute(actionPlan, task)
@@ -743,13 +815,17 @@ app.whenReady().then(() => {
   // Initialize database
   initDatabase()
 
-  // Auto-initialize Claude client if API key exists in settings
-  const savedApiKey = settingsRepository.getApiKey()
-  if (savedApiKey) {
-    claudeClient.initialize(savedApiKey)
-    console.log('[Main] Claude client auto-initialized from saved API key')
+  // Auto-initialize AI provider if API key exists in settings
+  const aiSettings = settingsRepository.getAiSettings()
+  if (aiSettings.apiKey) {
+    initializeProvider(
+      aiSettings.apiProvider,
+      aiSettings.apiKey,
+      aiSettings.apiModel || undefined
+    )
+    console.log(`[Main] ${aiSettings.apiProvider} provider auto-initialized from saved settings`)
   } else {
-    console.log('[Main] No API key found - Claude client not initialized')
+    console.log('[Main] No API key found - AI provider not initialized')
   }
 
   // Default open or close DevTools by F12 in development

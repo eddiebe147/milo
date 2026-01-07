@@ -143,6 +143,7 @@ export interface UserSettings {
 
   // Voice output
   voiceEnabled: boolean     // Whether TTS is enabled
+  voiceMuted: boolean       // Quick mute toggle (silences TTS without disabling)
   voiceId: string          // Selected voice URI (empty = system default)
   voiceRate: number        // Speech rate 0.5-2.0
 }

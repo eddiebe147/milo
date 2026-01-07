@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useTasksStore } from './tasksStore'
 import type { Task } from '../types'
@@ -38,14 +39,14 @@ describe('tasksStore', () => {
     vi.clearAllMocks()
 
     // Set up mock implementations
-    window.milo.tasks.getToday = vi.fn().mockResolvedValue(mockTasks)
-    window.milo.tasks.getActive = vi.fn().mockResolvedValue(null)
-    window.milo.tasks.create = vi.fn().mockResolvedValue(mockTask)
-    window.milo.tasks.update = vi.fn().mockResolvedValue(mockTask)
-    window.milo.tasks.delete = vi.fn().mockResolvedValue(true)
-    window.milo.tasks.start = vi.fn().mockResolvedValue({ ...mockTask, status: 'in_progress' })
-    window.milo.tasks.complete = vi.fn().mockResolvedValue({ ...mockTask, status: 'completed' })
-    window.milo.tasks.defer = vi.fn().mockResolvedValue({ ...mockTask, status: 'deferred' })
+    milo.tasks.getToday = vi.fn().mockResolvedValue(mockTasks)
+    milo.tasks.getActive = vi.fn().mockResolvedValue(null)
+    milo.tasks.create = vi.fn().mockResolvedValue(mockTask)
+    milo.tasks.update = vi.fn().mockResolvedValue(mockTask)
+    milo.tasks.delete = vi.fn().mockResolvedValue(true)
+    milo.tasks.start = vi.fn().mockResolvedValue({ ...mockTask, status: 'in_progress' })
+    milo.tasks.complete = vi.fn().mockResolvedValue({ ...mockTask, status: 'completed' })
+    milo.tasks.defer = vi.fn().mockResolvedValue({ ...mockTask, status: 'deferred' })
   })
 
   describe('initial state', () => {
@@ -92,12 +93,12 @@ describe('tasksStore', () => {
 
       const state = useTasksStore.getState()
       expect(state.tasks).toEqual(mockTasks)
-      expect(window.milo.tasks.getToday).toHaveBeenCalledTimes(1)
+      expect(milo.tasks.getToday).toHaveBeenCalledTimes(1)
     })
 
     it('handles errors', async () => {
       const errorMessage = 'Failed to fetch tasks'
-      window.milo.tasks.getToday = vi.fn().mockRejectedValue(new Error(errorMessage))
+      milo.tasks.getToday = vi.fn().mockRejectedValue(new Error(errorMessage))
 
       const store = useTasksStore.getState()
       await store.fetchTodaysTasks()
@@ -122,7 +123,7 @@ describe('tasksStore', () => {
       const result = await store.createTask(newTaskData)
 
       expect(result).toEqual(mockTask)
-      expect(window.milo.tasks.create).toHaveBeenCalledWith(newTaskData)
+      expect(milo.tasks.create).toHaveBeenCalledWith(newTaskData)
       expect(useTasksStore.getState().tasks).toContain(mockTask)
     })
 
@@ -144,7 +145,7 @@ describe('tasksStore', () => {
     })
 
     it('handles creation errors', async () => {
-      window.milo.tasks.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
+      milo.tasks.create = vi.fn().mockRejectedValue(new Error('Creation failed'))
 
       const store = useTasksStore.getState()
       const result = await store.createTask({
@@ -167,7 +168,7 @@ describe('tasksStore', () => {
 
     it('updates task in state', async () => {
       const updatedTask = { ...mockTask, title: 'Updated Title' }
-      window.milo.tasks.update = vi.fn().mockResolvedValue(updatedTask)
+      milo.tasks.update = vi.fn().mockResolvedValue(updatedTask)
 
       const store = useTasksStore.getState()
       const result = await store.updateTask('task-1', { title: 'Updated Title' })
@@ -181,7 +182,7 @@ describe('tasksStore', () => {
       useTasksStore.setState({ activeTask })
 
       const updatedTask = { ...mockTask, title: 'Updated Active' }
-      window.milo.tasks.update = vi.fn().mockResolvedValue(updatedTask)
+      milo.tasks.update = vi.fn().mockResolvedValue(updatedTask)
 
       const store = useTasksStore.getState()
       await store.updateTask('task-1', { title: 'Updated Active' })
@@ -230,7 +231,7 @@ describe('tasksStore', () => {
 
     it('marks task as completed', async () => {
       const completedTask = { ...mockTask, status: 'completed' as const }
-      window.milo.tasks.complete = vi.fn().mockResolvedValue(completedTask)
+      milo.tasks.complete = vi.fn().mockResolvedValue(completedTask)
 
       const store = useTasksStore.getState()
       const result = await store.completeTask('task-1')
@@ -241,7 +242,7 @@ describe('tasksStore', () => {
 
     it('clears activeTask when completed', async () => {
       const completedTask = { ...mockTask, status: 'completed' as const }
-      window.milo.tasks.complete = vi.fn().mockResolvedValue(completedTask)
+      milo.tasks.complete = vi.fn().mockResolvedValue(completedTask)
 
       const store = useTasksStore.getState()
       await store.completeTask('task-1')
@@ -257,7 +258,7 @@ describe('tasksStore', () => {
 
     it('removes deferred task from today list', async () => {
       const deferredTask = { ...mockTask, status: 'deferred' as const }
-      window.milo.tasks.defer = vi.fn().mockResolvedValue(deferredTask)
+      milo.tasks.defer = vi.fn().mockResolvedValue(deferredTask)
 
       const store = useTasksStore.getState()
       const result = await store.deferTask('task-1')

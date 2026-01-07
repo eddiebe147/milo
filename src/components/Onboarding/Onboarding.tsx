@@ -1,3 +1,4 @@
+import { milo } from "@/lib/api"
 import React, { useState, useEffect } from 'react'
 import { Rocket, Key, Target, Activity, Moon, ArrowRight, Check, ExternalLink } from 'lucide-react'
 import { LandingPageBackground } from '../ui/LandingPageBackground'
@@ -19,7 +20,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Check if already initialized on mount
   useEffect(() => {
-    window.milo?.ai.isInitialized().then(setIsInitialized)
+    milo?.ai.isInitialized().then(setIsInitialized)
   }, [])
 
   const handleApiKeySubmit = async () => {
@@ -33,10 +34,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
     try {
       // Save the API key
-      await window.milo?.settings.saveApiKey(apiKey.trim())
+      await milo?.settings.saveApiKey(apiKey.trim())
 
       // Initialize Claude
-      const result = await window.milo?.ai.initialize(apiKey.trim())
+      const result = await milo?.ai.initialize(apiKey.trim())
 
       if (result) {
         setIsInitialized(true)
