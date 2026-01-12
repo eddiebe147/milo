@@ -371,7 +371,7 @@ function runMigrations(database: Database.Database): void {
   }
 
   if (version < 6) {
-    console.log('[Database] Running migration v6: Add AI provider and model columns')
+    console.log('[Database] Running migration v6: Add AI provider, model, briefing, and calendar columns')
 
     // Add api_provider column (defaults to 'claude' for backwards compatibility)
     try {
@@ -390,6 +390,43 @@ function runMigrations(database: Database.Database): void {
       const errorMessage = e instanceof Error ? e.message : String(e)
       if (!errorMessage.includes('duplicate column')) {
         console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Add briefing configuration columns to user_settings
+    const briefingColumns = [
+      // Morning briefing section toggles
+      "briefing_morning_calendar INTEGER DEFAULT 1",
+      "briefing_morning_carryover INTEGER DEFAULT 1",
+      "briefing_morning_goals INTEGER DEFAULT 1",
+      "briefing_morning_yesterday_stats INTEGER DEFAULT 1",
+      "briefing_morning_streak INTEGER DEFAULT 1",
+      "briefing_morning_ai_insights INTEGER DEFAULT 1",
+      "briefing_morning_quick_capture INTEGER DEFAULT 1",
+      // Evening briefing section toggles
+      "briefing_evening_accomplishments INTEGER DEFAULT 1",
+      "briefing_evening_metrics INTEGER DEFAULT 1",
+      "briefing_evening_wins INTEGER DEFAULT 1",
+      "briefing_evening_reflection INTEGER DEFAULT 1",
+      "briefing_evening_carryover INTEGER DEFAULT 1",
+      "briefing_evening_tomorrow_top3 INTEGER DEFAULT 1",
+      "briefing_evening_shutdown INTEGER DEFAULT 1",
+      "briefing_evening_ai_insights INTEGER DEFAULT 1",
+      // Calendar integration
+      "calendar_google_enabled INTEGER DEFAULT 0",
+      "calendar_google_token TEXT",
+      "calendar_google_refresh_token TEXT",
+      "calendar_apple_enabled INTEGER DEFAULT 0",
+    ]
+
+    for (const column of briefingColumns) {
+      try {
+        database.prepare(`ALTER TABLE user_settings ADD COLUMN ${column}`).run()
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        if (!errorMessage.includes('duplicate column')) {
+          console.warn(`[Database] Migration warning: ${errorMessage}`)
+        }
       }
     }
 

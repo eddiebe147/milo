@@ -9,6 +9,7 @@
  * - Querying tasks by various filters
  * - Managing categories
  * - Getting task statistics and insights
+ * - Morning and evening briefings
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -23,6 +24,7 @@ import { getCategoryTools, handleCategoryTool } from './tools/categories.js';
 import { getTaskTools, handleTaskTool } from './tools/tasks.js';
 import { getGoalTools, handleGoalTool } from './tools/goals.js';
 import { getStatsTools, handleStatsTool } from './tools/stats.js';
+import { getBriefTools, handleBriefTool } from './tools/briefs.js';
 import { getResources, handleResourceRead } from './resources.js';
 
 /**
@@ -51,6 +53,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       ...getTaskTools(),
       ...getGoalTools(),
       ...getStatsTools(),
+      ...getBriefTools(),
     ],
   };
 });
@@ -76,6 +79,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (name.startsWith('stats_')) {
     return handleStatsTool(name, args);
+  }
+
+  if (name.startsWith('brief_')) {
+    return handleBriefTool(name, args);
   }
 
   throw new Error(`Unknown tool: ${name}`);

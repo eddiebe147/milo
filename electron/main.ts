@@ -10,6 +10,8 @@ import {
   nudgeManager,
   checkForUpdates,
   getCurrentVersion,
+  briefScheduler,
+  calendarService,
 } from './services'
 import * as analytics from './services/analytics'
 import {
@@ -354,7 +356,7 @@ function setupIPC(): void {
   })
 
   // Chat with MILO - now with tool execution
-  ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> }) => {
+  ipcMain.handle('ai:chat', async (_, input: { message: string; conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>; activeProjectId?: string | null }) => {
     const provider = getActiveProvider()
     if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
@@ -364,6 +366,7 @@ function setupIPC(): void {
       const allIncompleteTasks = tasksRepository.getAllIncomplete()
       const activeTask = tasksRepository.getActive()
       const dailyScore = scoresRepository.getToday()
+      const categories = categoriesRepository.getActive()
 
       // Get activity summary
       const today = new Date().toISOString().split('T')[0]
@@ -385,6 +388,9 @@ function setupIPC(): void {
             amberMinutes: activitySummary.amber,
             redMinutes: activitySummary.red,
           },
+          // Add categories context for task assignment
+          categories,
+          activeProjectId: input.activeProjectId,
         },
       })
 
@@ -509,6 +515,59 @@ function setupIPC(): void {
                 const task = tasksRepository.defer(resolvedId)
                 result = task ? `Deferred: ${task.title}` : `Failed to defer task`
                 tasksModified = true
+                break
+              }
+              // Project/Category management tools
+              case 'move_task_to_project': {
+                const taskIdOrTitle = input.task_id as string
+                const categoryId = input.category_id as string
+                const resolvedId = resolveTaskId(taskIdOrTitle)
+                if (!resolvedId) {
+                  result = `Task not found: ${taskIdOrTitle}`
+                  break
+                }
+                // Verify category exists
+                const category = categoriesRepository.getById(categoryId)
+                if (!category) {
+                  result = `Project not found: ${categoryId}`
+                  break
+                }
+                const task = tasksRepository.update(resolvedId, { categoryId })
+                result = task ? `Moved "${task.title}" to project "${category.name}"` : `Failed to move task`
+                tasksModified = true
+                break
+              }
+              case 'get_projects': {
+                const projects = categoriesRepository.getActive()
+                if (projects.length === 0) {
+                  result = 'No projects found. You can create one with create_project.'
+                } else {
+                  result = 'Available projects:\n' + projects.map(p => `- [${p.id}] ${p.name}`).join('\n')
+                }
+                break
+              }
+              case 'create_project': {
+                const name = input.name as string
+                const color = (input.color as string) || '#00FF00'
+                const existingProjects = categoriesRepository.getAll()
+                const newProject = categoriesRepository.create({
+                  name,
+                  color,
+                  sortOrder: existingProjects.length,
+                  isActive: true,
+                })
+                result = newProject ? `Created project "${newProject.name}" [${newProject.id}]` : 'Failed to create project'
+                tasksModified = true // Trigger UI refresh
+                break
+              }
+              case 'get_orphaned_tasks': {
+                const allTasks = tasksRepository.getAllIncomplete()
+                const orphaned = allTasks.filter(t => !t.categoryId)
+                if (orphaned.length === 0) {
+                  result = 'No orphaned tasks found. All tasks are assigned to projects.'
+                } else {
+                  result = `Found ${orphaned.length} orphaned task(s):\n` + orphaned.map(t => `- [${t.id}] ${t.title}`).join('\n')
+                }
                 break
               }
               default:
@@ -672,6 +731,64 @@ function setupIPC(): void {
   ipcMain.handle('updates:check', () => checkForUpdates())
   ipcMain.handle('updates:getVersion', () => getCurrentVersion())
 
+  // Briefing management
+  ipcMain.handle('briefing:getStatus', () => briefScheduler.getStatus())
+  ipcMain.handle('briefing:triggerMorning', () => {
+    briefScheduler.triggerManualBrief('morning')
+    analytics.trackEvent('morning_briefing_manual')
+    return true
+  })
+  ipcMain.handle('briefing:triggerEvening', () => {
+    briefScheduler.triggerManualBrief('evening')
+    analytics.trackEvent('evening_review_manual')
+    return true
+  })
+  ipcMain.handle('briefing:setEnabled', (_, enabled: boolean) => {
+    briefScheduler.setEnabled(enabled)
+    return true
+  })
+  ipcMain.handle('briefing:getConfig', () => settingsRepository.getBriefingConfig())
+  ipcMain.handle('briefing:updateConfig', (_, config) => {
+    settingsRepository.updateBriefingConfig(config)
+    return true
+  })
+  ipcMain.handle('briefing:getCalendarConfig', () => settingsRepository.getCalendarConfig())
+  ipcMain.handle('briefing:updateCalendarConfig', (_, config) => {
+    settingsRepository.updateCalendarConfig(config)
+    return true
+  })
+
+  // Calendar integration
+  ipcMain.handle('calendar:getStatus', () => calendarService.getStatus())
+  ipcMain.handle('calendar:getDaySchedule', async () => {
+    try {
+      return await calendarService.getDaySchedule()
+    } catch (error) {
+      console.error('[IPC] Calendar getDaySchedule error:', error)
+      return { events: [], freeBlocks: [], busyMinutes: 0, freeMinutes: 0 }
+    }
+  })
+  ipcMain.handle('calendar:getTodayEvents', async () => {
+    try {
+      return await calendarService.getTodayEvents()
+    } catch (error) {
+      console.error('[IPC] Calendar getTodayEvents error:', error)
+      return []
+    }
+  })
+  ipcMain.handle('calendar:connectGoogle', async () => {
+    try {
+      return await calendarService.startGoogleAuth()
+    } catch (error) {
+      console.error('[IPC] Calendar connectGoogle error:', error)
+      return { success: false, error: 'Failed to start OAuth flow' }
+    }
+  })
+  ipcMain.handle('calendar:disconnectGoogle', () => {
+    calendarService.disconnectGoogle()
+    return true
+  })
+
   // Task execution (smart task automation)
   ipcMain.handle('taskExecution:classifyTask', async (_, taskId: string) => {
     const provider = getActiveProvider()
@@ -791,6 +908,8 @@ function initActivityMonitoring(): void {
   if (mainWindow) {
     activityMonitor.setMainWindow(mainWindow)
     nudgeManager.setMainWindow(mainWindow)
+    briefScheduler.setMainWindow(mainWindow)
+    calendarService.setMainWindow(mainWindow)
   }
 
   // Wire nudge manager to activity state changes
@@ -800,6 +919,9 @@ function initActivityMonitoring(): void {
 
   // Start monitoring
   activityMonitor.start()
+
+  // Start brief scheduler for morning/evening notifications
+  briefScheduler.start()
 
   // Set up periodic nudge check (every 30 seconds)
   setInterval(() => {
@@ -876,6 +998,9 @@ app.on('before-quit', async () => {
 
   // Stop activity monitoring
   activityMonitor.stop()
+
+  // Stop brief scheduler
+  briefScheduler.stop()
 
   // Close database connection
   closeDatabase()

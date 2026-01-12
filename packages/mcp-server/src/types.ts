@@ -98,3 +98,130 @@ export interface DailyStats {
   tasksCompleted: number;
   streak: number;
 }
+
+// ==================== BRIEFING TYPES ====================
+
+/**
+ * Calendar event for briefing display
+ */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string; // ISO datetime
+  end: string; // ISO datetime
+  allDay: boolean;
+  source: 'google' | 'apple' | 'manual';
+}
+
+/**
+ * Streak information
+ */
+export interface StreakInfo {
+  streak: number;
+  isActive: boolean;
+  lastDate: string | null;
+  message?: string;
+}
+
+/**
+ * Signal task with rationale (for briefing display)
+ */
+export interface SignalTask {
+  task: Task;
+  rationale?: string;
+  linkedGoal?: string;
+}
+
+/**
+ * Carryover task with decision recommendation
+ */
+export interface CarryoverTask {
+  task: Task;
+  daysOverdue: number;
+  suggestion: 'tackle_today' | 'defer' | 'break_down' | 'drop';
+}
+
+/**
+ * Morning Brief Output - Complete structured response
+ */
+export interface MorningBriefOutput {
+  date: string;
+  type: 'morning';
+
+  // Core: Signal queue (always included)
+  signalQueue: Task[];
+
+  // Optional sections
+  carryoverTasks?: Task[];
+  weeklyGoals?: Goal[];
+  quarterlyMilestone?: Goal | null;
+  yesterdayStats?: DailyStats | null;
+  streak?: StreakInfo;
+
+  // Calendar (when integrated)
+  calendar?: {
+    events: CalendarEvent[];
+    freeBlocks: { start: string; end: string; durationMinutes: number }[];
+    busyHours: number;
+  };
+
+  // AI-generated content
+  insights?: string[];
+  briefing?: string;
+  warnings?: string[];
+}
+
+/**
+ * Evening Brief Output - Complete structured response
+ */
+export interface EveningBriefOutput {
+  date: string;
+  type: 'evening';
+
+  // Accomplishments
+  accomplishments?: Task[];
+
+  // Metrics
+  todayStats?: DailyStats | null;
+
+  // Carryover
+  incompleteTasksForReview?: Task[];
+
+  // Tomorrow prep
+  tomorrowSignalQueue?: Task[];
+
+  // Streak
+  streak?: StreakInfo;
+
+  // AI-generated content
+  insights?: string[];
+  wins?: string[];
+  improvements?: string[];
+
+  // Shutdown ritual
+  shutdownMessage?: string;
+}
+
+/**
+ * Briefing configuration (user preferences)
+ */
+export interface BriefingConfig {
+  // Morning sections
+  morningCalendar: boolean;
+  morningCarryover: boolean;
+  morningGoals: boolean;
+  morningYesterdayStats: boolean;
+  morningStreak: boolean;
+  morningAiInsights: boolean;
+  morningQuickCapture: boolean;
+
+  // Evening sections
+  eveningAccomplishments: boolean;
+  eveningMetrics: boolean;
+  eveningWins: boolean;
+  eveningReflection: boolean;
+  eveningCarryover: boolean;
+  eveningTomorrowTop3: boolean;
+  eveningShutdown: boolean;
+  eveningAiInsights: boolean;
+}

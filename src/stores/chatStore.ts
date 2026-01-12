@@ -1,6 +1,7 @@
 import { milo } from "@/lib/api"
 import { create } from 'zustand'
 import { useTasksStore } from './tasksStore'
+import { useCategoriesStore } from './categoriesStore'
 
 export interface ChatMessage {
   id: string
@@ -213,8 +214,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: msg.content,
       }))
 
-      // Call the AI chat API
-      const response = await milo?.ai.chat(trimmedMessage, conversationHistory)
+      // Get the currently active project filter from categories store
+      const activeProjectId = useCategoriesStore.getState().activeFilter
+
+      // Call the AI chat API with project context
+      const response = await milo?.ai.chat(trimmedMessage, conversationHistory, activeProjectId)
 
       if (response) {
         // Save assistant message to DB

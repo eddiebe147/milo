@@ -136,7 +136,7 @@ export interface MiloAPI {
     parseTasks: (text: string) => Promise<TaskParserOutput>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
     processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
-    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>, activeProjectId?: string | null) => Promise<string>
   }
   plan: {
     apply: (processedPlan: ProcessedPlan) => Promise<{
@@ -372,8 +372,8 @@ contextBridge.exposeInMainWorld('milo', {
       ipcRenderer.invoke('ai:generateNudge', driftMinutes, currentApp),
     processPlan: (rawPlan: string, context?: string) =>
       ipcRenderer.invoke('ai:processPlan', rawPlan, context),
-    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) =>
-      ipcRenderer.invoke('ai:chat', { message, conversationHistory }),
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>, activeProjectId?: string | null) =>
+      ipcRenderer.invoke('ai:chat', { message, conversationHistory, activeProjectId }),
   },
 
   // Plan management

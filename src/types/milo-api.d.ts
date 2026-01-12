@@ -159,8 +159,8 @@ export interface MiloAPI {
     eveningReview: (input: any) => Promise<any>
     parseTasks: (text: string) => Promise<any>
     generateNudge: (driftMinutes: number, currentApp: string) => Promise<string>
-    processPlan: (rawPlan: string, context?: string) => Promise<any>
-    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<string>
+    processPlan: (rawPlan: string, context?: string) => Promise<ProcessedPlan>
+    chat: (message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>, activeProjectId?: string | null) => Promise<string>
   }
   plan: {
     apply: (processedPlan: any) => Promise<PlanApplyResult>

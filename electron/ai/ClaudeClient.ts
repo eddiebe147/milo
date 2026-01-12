@@ -8,7 +8,7 @@ import {
   CHAT_PROMPT,
   TASK_ACTION_PROMPT,
 } from './prompts/system'
-import type { Goal, Task, DailyScore } from '../../src/types'
+import type { Goal, Task, DailyScore, Category } from '../../src/types'
 
 // Input types for Claude operations
 export interface MorningBriefingInput {
@@ -117,6 +117,9 @@ export interface ChatContext {
     amberMinutes: number
     redMinutes: number
   }
+  // Categories/Projects for task assignment
+  categories?: Category[]
+  activeProjectId?: string | null // Currently selected project filter in UI
 }
 
 export interface ChatInput {
@@ -424,6 +427,61 @@ class ClaudeClient {
           required: ['task_id'],
         },
       },
+      // Project/Category management tools
+      {
+        name: 'move_task_to_project',
+        description: 'Move/reassign a task to a different project/category. Use when user wants to reorganize tasks between projects or fix orphaned tasks.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'The ID of the task to move',
+            },
+            category_id: {
+              type: 'string',
+              description: 'The ID of the target project/category to move the task to',
+            },
+          },
+          required: ['task_id', 'category_id'],
+        },
+      },
+      {
+        name: 'get_projects',
+        description: 'List all available projects/categories. Use when you need to show the user their projects or help them choose one for task assignment.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
+      {
+        name: 'create_project',
+        description: 'Create a new project/category. Use when user wants to organize tasks under a new project that does not exist yet.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Name of the new project/category',
+            },
+            color: {
+              type: 'string',
+              description: 'Hex color code for the project (e.g., #00FF00). Optional, defaults to green.',
+            },
+          },
+          required: ['name'],
+        },
+      },
+      {
+        name: 'get_orphaned_tasks',
+        description: 'Find all tasks that have no project/category assigned. Use to help user organize unassigned tasks.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {},
+          required: [],
+        },
+      },
     ]
   }
 
@@ -620,6 +678,26 @@ After using a tool, confirm the action to the user.`
   private formatChatContext(context: ChatContext): string {
     let contextStr = `## Current Context\n\n`
 
+    // Categories/Projects - CRITICAL for task assignment
+    if (context.categories && context.categories.length > 0) {
+      contextStr += `### Available Projects/Categories\n`
+      contextStr += `(Use category_id when creating tasks - NEVER create tasks without a project)\n`
+      context.categories.forEach((c) => {
+        const isActive = context.activeProjectId === c.id
+        contextStr += `- [${c.id}] ${c.name}${isActive ? ' ← CURRENTLY VIEWING' : ''}\n`
+      })
+      if (context.activeProjectId) {
+        const activeProject = context.categories.find(c => c.id === context.activeProjectId)
+        if (activeProject) {
+          contextStr += `\n**Active Project Filter:** ${activeProject.name} (${context.activeProjectId})\n`
+          contextStr += `Default new tasks to this project unless user specifies otherwise.\n`
+        }
+      } else {
+        contextStr += `\n**No active project filter** - ASK user which project before creating tasks.\n`
+      }
+      contextStr += '\n'
+    }
+
     if (context.goals && context.goals.length > 0) {
       const goalsByTimeframe = {
         yearly: context.goals.filter((g) => g.timeframe === 'yearly'),
@@ -644,7 +722,9 @@ After using a tool, confirm the action to the user.`
       contextStr += `(Use the ID in brackets when calling task tools)\n`
       context.todayTasks.forEach((t) => {
         const status = t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '→' : '○'
-        contextStr += `${status} [${t.id}] ${t.title}${t.priority >= 4 ? ' [SIGNAL]' : ''}\n`
+        // Include category info in task listing
+        const categoryInfo = t.categoryId ? ` [Project: ${t.categoryId}]` : ' [NO PROJECT - ORPHANED]'
+        contextStr += `${status} [${t.id}] ${t.title}${t.priority >= 4 ? ' [SIGNAL]' : ''}${categoryInfo}\n`
       })
       contextStr += '\n'
     }

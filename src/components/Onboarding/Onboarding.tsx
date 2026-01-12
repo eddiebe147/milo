@@ -80,14 +80,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               </p>
             </div>
 
-            <p className="text-pipboy-green/80 leading-relaxed">
+            <p className="text-pipboy-green/80 leading-relaxed animate-fadeIn delay-300 opacity-0" style={{ animationDelay: '300ms' }}>
               MILO helps you cut through the noise and focus on what truly matters.
               Set goals, track progress, and let AI keep you on course.
             </p>
 
             <button
               onClick={() => setStep('api-key')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-pipboy-green/20 hover:bg-pipboy-green/30 border border-pipboy-green rounded-lg text-pipboy-green font-medium transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-pipboy-green/20 hover:bg-pipboy-green/30 border border-pipboy-green rounded-lg text-pipboy-green font-medium transition-all animate-fadeIn delay-500 opacity-0 hover:shadow-glow-green"
+              style={{ animationDelay: '500ms' }}
             >
               Get Started
               <ArrowRight size={18} />
@@ -185,26 +186,34 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             </div>
 
             <div className="space-y-4">
-              <FeatureCard
-                icon={<Target className="w-6 h-6" />}
-                title="Set Your Goals"
-                description="Define your Beacon (big vision), break it into Milestones, then daily Tasks."
-              />
-              <FeatureCard
-                icon={<Rocket className="w-6 h-6" />}
-                title="Morning Briefing"
-                description="Start each day with an AI-powered planning session. Know exactly what to focus on."
-              />
-              <FeatureCard
-                icon={<Activity className="w-6 h-6" />}
-                title="Stay on Track"
-                description="MILO monitors your activity and nudges you when you drift off course."
-              />
-              <FeatureCard
-                icon={<Moon className="w-6 h-6" />}
-                title="Evening Review"
-                description="Reflect on your day, celebrate wins, and prepare for tomorrow."
-              />
+              <div className="animate-slideInRight opacity-0" style={{ animationDelay: '100ms' }}>
+                <FeatureCard
+                  icon={<Target className="w-6 h-6" />}
+                  title="Set Your Goals"
+                  description="Define your Beacon (big vision), break it into Milestones, then daily Tasks."
+                />
+              </div>
+              <div className="animate-slideInRight opacity-0" style={{ animationDelay: '200ms' }}>
+                <FeatureCard
+                  icon={<Rocket className="w-6 h-6" />}
+                  title="Morning Briefing"
+                  description="Start each day with an AI-powered planning session. Know exactly what to focus on."
+                />
+              </div>
+              <div className="animate-slideInRight opacity-0" style={{ animationDelay: '300ms' }}>
+                <FeatureCard
+                  icon={<Activity className="w-6 h-6" />}
+                  title="Stay on Track"
+                  description="MILO monitors your activity and nudges you when you drift off course."
+                />
+              </div>
+              <div className="animate-slideInRight opacity-0" style={{ animationDelay: '400ms' }}>
+                <FeatureCard
+                  icon={<Moon className="w-6 h-6" />}
+                  title="Evening Review"
+                  description="Reflect on your day, celebrate wins, and prepare for tomorrow."
+                />
+              </div>
             </div>
 
             <button

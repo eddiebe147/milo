@@ -32,12 +32,31 @@ export interface ThemeColors {
   themeAiMessageColor: string
 }
 
-export interface ThemeColors {
-  themePrimaryColor: string
-  themeAccentColor: string
-  themeDangerColor: string
-  themeUserMessageColor: string
-  themeAiMessageColor: string
+export interface BriefingConfig {
+  // Morning briefing section toggles
+  morningCalendar: boolean
+  morningCarryover: boolean
+  morningGoals: boolean
+  morningYesterdayStats: boolean
+  morningStreak: boolean
+  morningAiInsights: boolean
+  morningQuickCapture: boolean
+  // Evening briefing section toggles
+  eveningAccomplishments: boolean
+  eveningMetrics: boolean
+  eveningWins: boolean
+  eveningReflection: boolean
+  eveningCarryover: boolean
+  eveningTomorrowTop3: boolean
+  eveningShutdown: boolean
+  eveningAiInsights: boolean
+}
+
+export interface CalendarConfig {
+  googleEnabled: boolean
+  googleToken: string | null
+  googleRefreshToken: string | null
+  appleEnabled: boolean
 }
 
 // Convert DB row to StoredSettings type
@@ -309,68 +328,125 @@ export const settingsRepository = {
     }
   },
 
-  // Get all theme colors
-  getThemeColors(): ThemeColors {
+  // Get briefing configuration
+  getBriefingConfig(): BriefingConfig {
     const db = getDatabase()
     const row = db.prepare(`
       SELECT
-        theme_primary_color,
-        theme_accent_color,
-        theme_danger_color,
-        theme_user_message_color,
-        theme_ai_message_color
+        briefing_morning_calendar,
+        briefing_morning_carryover,
+        briefing_morning_goals,
+        briefing_morning_yesterday_stats,
+        briefing_morning_streak,
+        briefing_morning_ai_insights,
+        briefing_morning_quick_capture,
+        briefing_evening_accomplishments,
+        briefing_evening_metrics,
+        briefing_evening_wins,
+        briefing_evening_reflection,
+        briefing_evening_carryover,
+        briefing_evening_tomorrow_top3,
+        briefing_evening_shutdown,
+        briefing_evening_ai_insights
       FROM user_settings WHERE id = 1
     `).get() as Record<string, unknown>
 
     return {
-      themePrimaryColor: row.theme_primary_color as string,
-      themeAccentColor: row.theme_accent_color as string,
-      themeDangerColor: row.theme_danger_color as string,
-      themeUserMessageColor: row.theme_user_message_color as string,
-      themeAiMessageColor: row.theme_ai_message_color as string,
+      morningCalendar: Boolean(row.briefing_morning_calendar ?? 1),
+      morningCarryover: Boolean(row.briefing_morning_carryover ?? 1),
+      morningGoals: Boolean(row.briefing_morning_goals ?? 1),
+      morningYesterdayStats: Boolean(row.briefing_morning_yesterday_stats ?? 1),
+      morningStreak: Boolean(row.briefing_morning_streak ?? 1),
+      morningAiInsights: Boolean(row.briefing_morning_ai_insights ?? 1),
+      morningQuickCapture: Boolean(row.briefing_morning_quick_capture ?? 1),
+      eveningAccomplishments: Boolean(row.briefing_evening_accomplishments ?? 1),
+      eveningMetrics: Boolean(row.briefing_evening_metrics ?? 1),
+      eveningWins: Boolean(row.briefing_evening_wins ?? 1),
+      eveningReflection: Boolean(row.briefing_evening_reflection ?? 1),
+      eveningCarryover: Boolean(row.briefing_evening_carryover ?? 1),
+      eveningTomorrowTop3: Boolean(row.briefing_evening_tomorrow_top3 ?? 1),
+      eveningShutdown: Boolean(row.briefing_evening_shutdown ?? 1),
+      eveningAiInsights: Boolean(row.briefing_evening_ai_insights ?? 1),
     }
   },
 
-  // Set a single theme color
-  setThemeColor(key: keyof ThemeColors, value: string): void {
-    const db = getDatabase()
-    // Convert camelCase to snake_case
-    const columnMap: Record<keyof ThemeColors, string> = {
-      themePrimaryColor: 'theme_primary_color',
-      themeAccentColor: 'theme_accent_color',
-      themeDangerColor: 'theme_danger_color',
-      themeUserMessageColor: 'theme_user_message_color',
-      themeAiMessageColor: 'theme_ai_message_color',
-    }
-    const columnName = columnMap[key]
-    db.prepare(`UPDATE user_settings SET ${columnName} = ? WHERE id = 1`).run(value)
-  },
-
-  // Set all theme colors at once
-  setThemeColors(colors: Partial<ThemeColors>): void {
+  // Update briefing configuration
+  updateBriefingConfig(config: Partial<BriefingConfig>): void {
     const db = getDatabase()
     const setClauses: string[] = []
     const values: unknown[] = []
 
-    if (colors.themePrimaryColor !== undefined) {
-      setClauses.push('theme_primary_color = ?')
-      values.push(colors.themePrimaryColor)
+    const columnMap: Record<keyof BriefingConfig, string> = {
+      morningCalendar: 'briefing_morning_calendar',
+      morningCarryover: 'briefing_morning_carryover',
+      morningGoals: 'briefing_morning_goals',
+      morningYesterdayStats: 'briefing_morning_yesterday_stats',
+      morningStreak: 'briefing_morning_streak',
+      morningAiInsights: 'briefing_morning_ai_insights',
+      morningQuickCapture: 'briefing_morning_quick_capture',
+      eveningAccomplishments: 'briefing_evening_accomplishments',
+      eveningMetrics: 'briefing_evening_metrics',
+      eveningWins: 'briefing_evening_wins',
+      eveningReflection: 'briefing_evening_reflection',
+      eveningCarryover: 'briefing_evening_carryover',
+      eveningTomorrowTop3: 'briefing_evening_tomorrow_top3',
+      eveningShutdown: 'briefing_evening_shutdown',
+      eveningAiInsights: 'briefing_evening_ai_insights',
     }
-    if (colors.themeAccentColor !== undefined) {
-      setClauses.push('theme_accent_color = ?')
-      values.push(colors.themeAccentColor)
+
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined && key in columnMap) {
+        setClauses.push(`${columnMap[key as keyof BriefingConfig]} = ?`)
+        values.push(value ? 1 : 0)
+      }
     }
-    if (colors.themeDangerColor !== undefined) {
-      setClauses.push('theme_danger_color = ?')
-      values.push(colors.themeDangerColor)
+
+    if (setClauses.length > 0) {
+      db.prepare(`UPDATE user_settings SET ${setClauses.join(', ')} WHERE id = 1`).run(...values)
     }
-    if (colors.themeUserMessageColor !== undefined) {
-      setClauses.push('theme_user_message_color = ?')
-      values.push(colors.themeUserMessageColor)
+  },
+
+  // Get calendar configuration
+  getCalendarConfig(): CalendarConfig {
+    const db = getDatabase()
+    const row = db.prepare(`
+      SELECT
+        calendar_google_enabled,
+        calendar_google_token,
+        calendar_google_refresh_token,
+        calendar_apple_enabled
+      FROM user_settings WHERE id = 1
+    `).get() as Record<string, unknown>
+
+    return {
+      googleEnabled: Boolean(row.calendar_google_enabled ?? 0),
+      googleToken: row.calendar_google_token as string | null,
+      googleRefreshToken: row.calendar_google_refresh_token as string | null,
+      appleEnabled: Boolean(row.calendar_apple_enabled ?? 0),
     }
-    if (colors.themeAiMessageColor !== undefined) {
-      setClauses.push('theme_ai_message_color = ?')
-      values.push(colors.themeAiMessageColor)
+  },
+
+  // Update calendar configuration
+  updateCalendarConfig(config: Partial<CalendarConfig>): void {
+    const db = getDatabase()
+    const setClauses: string[] = []
+    const values: unknown[] = []
+
+    if (config.googleEnabled !== undefined) {
+      setClauses.push('calendar_google_enabled = ?')
+      values.push(config.googleEnabled ? 1 : 0)
+    }
+    if (config.googleToken !== undefined) {
+      setClauses.push('calendar_google_token = ?')
+      values.push(config.googleToken)
+    }
+    if (config.googleRefreshToken !== undefined) {
+      setClauses.push('calendar_google_refresh_token = ?')
+      values.push(config.googleRefreshToken)
+    }
+    if (config.appleEnabled !== undefined) {
+      setClauses.push('calendar_apple_enabled = ?')
+      values.push(config.appleEnabled ? 1 : 0)
     }
 
     if (setClauses.length > 0) {
