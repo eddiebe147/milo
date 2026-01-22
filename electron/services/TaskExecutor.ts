@@ -11,7 +11,7 @@ const fsReaddir = promisify(fs.readdir)
 const fsStat = promisify(fs.stat)
 
 // Action types that MILO can take on a task
-export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type TaskActionType = 'claude_code' | 'claude_web' | 'claude_desktop' | 'research' | 'manual'
 
 // Execution targets for the new modal-based flow
 export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
@@ -382,46 +382,64 @@ export class TaskExecutor {
         }
 
         const cwd = projectPath || process.env.HOME || '/'
+        const inTmux = process.env.TMUX ? true : false
 
         try {
-            // Check if iTerm2 is installed
-            const hasITerm = await this.checkAppExists('iTerm')
+            if (inTmux) {
+                // If running in tmux, send command directly to tmux session
+                console.log('[TaskExecutor] Detected tmux environment, sending command to current session')
 
-            if (hasITerm) {
-                // Use iTerm2 (preferred)
-                const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-                const escapedCwd = cwd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+                const tmuxPane = process.env.TMUX_PANE || '%0'
+                const command = `cd "${cwd}" && ${this.claudeCliPath} "${prompt}"`
 
-                const script = `
-                    tell application "iTerm"
-                        activate
-                        create window with default profile
-                        tell current session of current window
-                            write text "cd \\"${escapedCwd}\\" && ${this.claudeCliPath} \\"${escapedPrompt}\\""
-                        end tell
-                    end tell
-                `
+                // Send keys to tmux pane (doesn't require AppleScript)
+                await execAsync(`tmux send-keys -t ${tmuxPane} "${command}" Enter`)
 
-                await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
+                return {
+                    success: true,
+                    actionType: 'claude_code',
+                    message: `Sent Claude CLI command to tmux session at ${cwd}`,
+                }
             } else {
-                // Fallback to Terminal.app
-                const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/'/g, "'\\''")
-                const escapedCwd = cwd.replace(/"/g, '\\"')
+                // Use iTerm2 or Terminal for non-tmux sessions
+                const hasITerm = await this.checkAppExists('iTerm')
 
-                const script = `
-                    tell application "Terminal"
-                        activate
-                        do script "cd \\"${escapedCwd}\\" && ${this.claudeCliPath} \\"${escapedPrompt}\\""
-                    end tell
-                `
+                if (hasITerm) {
+                    // Use iTerm2 (preferred)
+                    const escapedPrompt = prompt.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+                    const escapedCwd = cwd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
-                await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
-            }
+                    const script = `
+                        tell application "iTerm"
+                            activate
+                            create window with default profile
+                            tell current session of current window
+                                write text "cd \\"${escapedCwd}\\" && ${this.claudeCliPath} \\"${escapedPrompt}\\""
+                            end tell
+                        end tell
+                    `
 
-            return {
-                success: true,
-                actionType: 'claude_code',
-                message: `Launched Claude CLI in ${hasITerm ? 'iTerm2' : 'Terminal'} at ${cwd}`,
+                    await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
+                } else {
+                    // Fallback to Terminal.app
+                    const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/'/g, "'\\''")
+                    const escapedCwd = cwd.replace(/"/g, '\\"')
+
+                    const script = `
+                        tell application "Terminal"
+                            activate
+                            do script "cd \\"${escapedCwd}\\" && ${this.claudeCliPath} \\"${escapedPrompt}\\""
+                        end tell
+                    `
+
+                    await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
+                }
+
+                return {
+                    success: true,
+                    actionType: 'claude_code',
+                    message: `Launched Claude CLI in ${hasITerm ? 'iTerm2' : 'Terminal'} at ${cwd}`,
+                }
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -468,30 +486,39 @@ export class TaskExecutor {
             // Open Claude Desktop app
             await execAsync('open -a "Claude"')
 
-            // Give the app time to activate, then paste
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Give the app time to activate
+            await new Promise(resolve => setTimeout(resolve, 1000))
 
-            // Simulate Cmd+V to paste (user can also paste manually)
-            // Note: This requires accessibility permissions, so we'll just notify the user
+            // Attempt to paste using AppleScript with better error handling
             const script = `
-                tell application "Claude" to activate
-                delay 0.3
-                tell application "System Events"
-                    keystroke "v" using command down
-                end tell
+                try
+                    tell application "Claude" to activate
+                    delay 0.5
+                    tell application "System Events"
+                        keystroke "v" using command down
+                    end tell
+                    return "success"
+                on error errMsg
+                    return "failed"
+                end try
             `
 
+            let pasteSuccess = false
             try {
-                await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
-            } catch {
-                // If paste fails (accessibility permissions), user can paste manually
-                console.log('[TaskExecutor] Auto-paste failed, user can paste manually with Cmd+V')
+                const result = await execAsync(`osascript -e '${script.replace(/'/g, "'\\''")}'`)
+                pasteSuccess = result.stdout.includes('success')
+                console.log('[TaskExecutor] Auto-paste result:', result.stdout.trim())
+            } catch (err) {
+                console.log('[TaskExecutor] Auto-paste failed (may need accessibility permissions):', err instanceof Error ? err.message : 'Unknown error')
+                pasteSuccess = false
             }
 
             return {
                 success: true,
-                actionType: 'claude_web',
-                message: 'Opened Claude Desktop - prompt copied to clipboard (Cmd+V to paste if needed)',
+                actionType: 'claude_desktop',
+                message: pasteSuccess
+                    ? 'Opened Claude Desktop - prompt automatically pasted!'
+                    : 'Opened Claude Desktop - prompt copied to clipboard. Press Cmd+V to paste.\n(Note: Enable accessibility permissions in System Preferences > Security & Privacy > Accessibility for auto-paste)',
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -499,7 +526,7 @@ export class TaskExecutor {
 
             return {
                 success: false,
-                actionType: 'claude_web',
+                actionType: 'claude_desktop',
                 message: 'Failed to launch Claude Desktop',
                 error: errorMessage,
             }

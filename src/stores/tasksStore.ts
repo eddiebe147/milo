@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { Task } from '../types'
 
 // Import types from preload (available via milo)
-export type TaskActionType = 'claude_code' | 'claude_web' | 'research' | 'manual'
+export type TaskActionType = 'claude_code' | 'claude_web' | 'claude_desktop' | 'research' | 'manual'
 export type ExecutionTarget = 'claude_web' | 'claude_cli' | 'claude_desktop'
 
 export interface TaskActionPlan {
