@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from '../src/types'
+import type { Goal, Task, Category, Project, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from '../src/types'
 import type {
   MorningBriefingInput,
   MorningBriefingOutput,
@@ -81,6 +81,7 @@ export interface MiloAPI {
     // New methods for signal queue & continuity
     getAllIncomplete: () => Promise<Task[]>
     getByCategory: (categoryId: string) => Promise<Task[]>
+    getByProject: (projectId: string) => Promise<Task[]>
     getSignalQueue: (limit?: number) => Promise<Task[]>
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
@@ -95,6 +96,22 @@ export interface MiloAPI {
     update: (id: string, updates: Partial<Category>) => Promise<Category | null>
     delete: (id: string) => Promise<boolean>
     reorder: (orderedIds: string[]) => Promise<void>
+  }
+  projects: {
+    getAll: () => Promise<Project[]>
+    getActive: () => Promise<Project[]>
+    getByStatus: (status: Project['status']) => Promise<Project[]>
+    getById: (id: string) => Promise<Project | null>
+    getByPath: (path: string) => Promise<Project | null>
+    create: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Project | null>
+    update: (id: string, updates: Partial<Project>) => Promise<Project | null>
+    delete: (id: string) => Promise<boolean>
+    archive: (id: string) => Promise<Project | null>
+    pause: (id: string) => Promise<Project | null>
+    activate: (id: string) => Promise<Project | null>
+    complete: (id: string) => Promise<Project | null>
+    reorder: (orderedIds: string[]) => Promise<void>
+    search: (query: string) => Promise<Project[]>
   }
   activity: {
     getToday: () => Promise<ActivityLog[]>
@@ -300,6 +317,7 @@ contextBridge.exposeInMainWorld('milo', {
     // New methods for signal queue & continuity
     getAllIncomplete: () => ipcRenderer.invoke('tasks:getAllIncomplete'),
     getByCategory: (categoryId: string) => ipcRenderer.invoke('tasks:getByCategory', categoryId),
+    getByProject: (projectId: string) => ipcRenderer.invoke('tasks:getByProject', projectId),
     getSignalQueue: (limit?: number) => ipcRenderer.invoke('tasks:getSignalQueue', limit),
     getBacklog: (signalQueueIds: string[]) => ipcRenderer.invoke('tasks:getBacklog', signalQueueIds),
     getWorkedYesterday: () => ipcRenderer.invoke('tasks:getWorkedYesterday'),
@@ -318,6 +336,26 @@ contextBridge.exposeInMainWorld('milo', {
       ipcRenderer.invoke('categories:update', id, updates),
     delete: (id: string) => ipcRenderer.invoke('categories:delete', id),
     reorder: (orderedIds: string[]) => ipcRenderer.invoke('categories:reorder', orderedIds),
+  },
+
+  // Projects CRUD
+  projects: {
+    getAll: () => ipcRenderer.invoke('projects:getAll'),
+    getActive: () => ipcRenderer.invoke('projects:getActive'),
+    getByStatus: (status: Project['status']) => ipcRenderer.invoke('projects:getByStatus', status),
+    getById: (id: string) => ipcRenderer.invoke('projects:getById', id),
+    getByPath: (path: string) => ipcRenderer.invoke('projects:getByPath', path),
+    create: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
+      ipcRenderer.invoke('projects:create', project),
+    update: (id: string, updates: Partial<Project>) =>
+      ipcRenderer.invoke('projects:update', id, updates),
+    delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
+    archive: (id: string) => ipcRenderer.invoke('projects:archive', id),
+    pause: (id: string) => ipcRenderer.invoke('projects:pause', id),
+    activate: (id: string) => ipcRenderer.invoke('projects:activate', id),
+    complete: (id: string) => ipcRenderer.invoke('projects:complete', id),
+    reorder: (orderedIds: string[]) => ipcRenderer.invoke('projects:reorder', orderedIds),
+    search: (query: string) => ipcRenderer.invoke('projects:search', query),
   },
 
   // Activity & Classifications

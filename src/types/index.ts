@@ -20,6 +20,7 @@ export interface Task {
   description?: string
   goalId: string | null // linked goal
   categoryId?: string | null // linked category/project (optional, defaults to null)
+  projectId?: string | null // linked project (optional, for dev projects)
   status: 'pending' | 'in_progress' | 'completed' | 'deferred'
   priority: number // 1-5, AI suggested
   rationale?: string // AI explanation of why this matters
@@ -41,6 +42,20 @@ export interface Category {
   color: string // hex color for UI
   sortOrder: number
   isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Projects (development projects/workspaces)
+export interface Project {
+  id: string
+  name: string
+  description?: string
+  path?: string // file system path (for dev projects)
+  color: string // hex color for UI
+  icon?: string // emoji or icon identifier
+  status: 'active' | 'paused' | 'completed' | 'archived'
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }

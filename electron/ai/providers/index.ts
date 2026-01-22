@@ -35,6 +35,7 @@ export { OpenAIProvider } from './OpenAIProvider'
 
 // Import for factory
 import type { AIProvider, AIProviderType } from './AIProvider'
+import { API_KEY_PATTERNS } from './AIProvider'
 import { ClaudeProvider } from './ClaudeProvider'
 import { OpenAIProvider } from './OpenAIProvider'
 
@@ -95,7 +96,6 @@ export class AIProviderFactory {
    * Validate API key format for a provider
    */
   static validateApiKey(type: AIProviderType, apiKey: string): { valid: boolean; error?: string } {
-    const { API_KEY_PATTERNS } = require('./AIProvider')
     const pattern = API_KEY_PATTERNS[type]
 
     if (!pattern) {

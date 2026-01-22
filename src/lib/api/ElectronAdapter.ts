@@ -11,6 +11,7 @@ export const ElectronAdapter: PlatformAdapter = {
     goals: window.milo.goals,
     tasks: window.milo.tasks,
     categories: window.milo.categories,
+    projects: window.milo.projects,
     activity: window.milo.activity,
     classifications: window.milo.classifications,
     scores: window.milo.scores,
@@ -24,3 +25,4 @@ export const ElectronAdapter: PlatformAdapter = {
     updates: window.milo.updates,
     chat: window.milo.chat,
 }
+

@@ -18,6 +18,7 @@ import {
   goalsRepository,
   tasksRepository,
   categoriesRepository,
+  projectsRepository,
   activityRepository,
   scoresRepository,
   classificationsRepository,
@@ -33,7 +34,7 @@ import {
   type MorningBriefingInput,
   type EveningReviewInput,
 } from './ai/providers'
-import type { Goal, Task } from '../src/types'
+import type { Goal, Task, Project } from '../src/types'
 import { taskExecutor, type ExecutionTarget } from './services/TaskExecutor'
 import type { ThemeColors } from './repositories/settings'
 
@@ -221,11 +222,13 @@ function setupIPC(): void {
   // New task methods for signal queue & continuity
   ipcMain.handle('tasks:getAllIncomplete', () => tasksRepository.getAllIncomplete())
   ipcMain.handle('tasks:getByCategory', (_, categoryId: string) => tasksRepository.getByCategory(categoryId))
+  ipcMain.handle('tasks:getByProject', (_, projectId: string) => tasksRepository.getByProject(projectId))
   ipcMain.handle('tasks:getSignalQueue', (_, limit?: number) => tasksRepository.getSignalQueue(limit))
   ipcMain.handle('tasks:getBacklog', (_, signalQueueIds: string[]) => tasksRepository.getBacklog(signalQueueIds))
   ipcMain.handle('tasks:getWorkedYesterday', () => tasksRepository.getWorkedYesterday())
   ipcMain.handle('tasks:recordWork', (_, id: string) => tasksRepository.recordWork(id))
   ipcMain.handle('tasks:reorderSignalQueue', (_, taskIds: string[]) => tasksRepository.reorderSignalQueue(taskIds))
+
 
   // Categories CRUD
   ipcMain.handle('categories:getAll', () => categoriesRepository.getAll())
@@ -235,6 +238,31 @@ function setupIPC(): void {
   ipcMain.handle('categories:update', (_, id: string, updates) => categoriesRepository.update(id, updates))
   ipcMain.handle('categories:delete', (_, id: string) => categoriesRepository.delete(id))
   ipcMain.handle('categories:reorder', (_, orderedIds: string[]) => categoriesRepository.reorder(orderedIds))
+
+  // Projects CRUD
+  ipcMain.handle('projects:getAll', () => projectsRepository.getAll())
+  ipcMain.handle('projects:getActive', () => projectsRepository.getActive())
+  ipcMain.handle('projects:getByStatus', (_, status: Project['status']) => projectsRepository.getByStatus(status))
+  ipcMain.handle('projects:getById', (_, id: string) => projectsRepository.getById(id))
+  ipcMain.handle('projects:getByPath', (_, path: string) => projectsRepository.getByPath(path))
+  ipcMain.handle('projects:create', (_, project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const created = projectsRepository.create(project)
+    if (created) {
+      analytics.trackEvent('project_created')
+    }
+    return created
+  })
+  ipcMain.handle('projects:update', (_, id: string, updates: Partial<Project>) =>
+    projectsRepository.update(id, updates)
+  )
+  ipcMain.handle('projects:delete', (_, id: string) => projectsRepository.delete(id))
+  ipcMain.handle('projects:archive', (_, id: string) => projectsRepository.archive(id))
+  ipcMain.handle('projects:pause', (_, id: string) => projectsRepository.pause(id))
+  ipcMain.handle('projects:activate', (_, id: string) => projectsRepository.activate(id))
+  ipcMain.handle('projects:complete', (_, id: string) => projectsRepository.complete(id))
+  ipcMain.handle('projects:reorder', (_, orderedIds: string[]) => projectsRepository.reorder(orderedIds))
+  ipcMain.handle('projects:search', (_, query: string) => projectsRepository.search(query))
+
 
   // Activity & Classifications
   ipcMain.handle('activity:getToday', () => activityRepository.getToday())

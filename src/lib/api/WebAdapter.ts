@@ -2,6 +2,7 @@ import { PlatformAdapter } from './types'
 import { goalsWebRepository } from './web/goals'
 import { tasksWebRepository } from './web/tasks'
 import { categoriesWebRepository } from './web/categories'
+import { projectsWebRepository } from './web/projects'
 import { settingsWebRepository } from './web/settings'
 import { activityWebRepository, classificationsWebRepository } from './web/activity'
 import { scoresWebRepository } from './web/scores'
@@ -36,6 +37,7 @@ export const WebAdapter: PlatformAdapter = {
     goals: goalsWebRepository,
     tasks: tasksWebRepository,
     categories: categoriesWebRepository,
+    projects: projectsWebRepository,
     activity: activityWebRepository,
     classifications: classificationsWebRepository,
     scores: scoresWebRepository,
@@ -98,3 +100,4 @@ export const WebAdapter: PlatformAdapter = {
     },
     chat: chatWebRepository
 }
+

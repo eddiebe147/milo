@@ -434,7 +434,59 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v6 complete')
   }
 
-  // Future migrations go here (if version < 7, etc.)
+  if (version < 7) {
+    console.log('[Database] Running migration v7: Add projects table')
+
+    // Create projects table
+    database.prepare(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        path TEXT,
+        color TEXT DEFAULT '#00ff41',
+        icon TEXT,
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'completed', 'archived')),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run()
+
+    // Create indexes for projects
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)
+    `).run()
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_projects_sort_order ON projects(sort_order)
+    `).run()
+
+    // Insert default "General" project
+    database.prepare(`
+      INSERT OR IGNORE INTO projects (id, name, description, color, status, sort_order)
+      VALUES ('general', 'General', 'Default project for uncategorized work', '#00ff41', 'active', 0)
+    `).run()
+
+    // Add project_id column to tasks table (for linking tasks to projects)
+    try {
+      database.prepare(`ALTER TABLE tasks ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL`).run()
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      if (!errorMessage.includes('duplicate column')) {
+        console.warn(`[Database] Migration warning: ${errorMessage}`)
+      }
+    }
+
+    // Create index for task-project relationship
+    database.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id)
+    `).run()
+
+    database.pragma('user_version = 7')
+    console.log('[Database] Migration v7 complete')
+  }
+
+  // Future migrations go here (if version < 8, etc.)
 }
 
 // Default app classifications for common productivity apps

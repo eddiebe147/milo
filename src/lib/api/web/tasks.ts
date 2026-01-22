@@ -87,6 +87,14 @@ export const tasksWebRepository = {
             .sortBy('priority')
     },
 
+    async getByProject(projectId: string): Promise<Task[]> {
+        return db.tasks
+            .where('projectId')
+            .equals(projectId)
+            .and(t => ['pending', 'in_progress'].includes(t.status))
+            .sortBy('priority')
+    },
+
     async getSignalQueue(limit: number = 5): Promise<Task[]> {
         const today = new Date().toISOString().split('T')[0]
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]

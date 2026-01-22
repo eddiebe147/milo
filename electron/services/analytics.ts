@@ -35,6 +35,7 @@ export type AnalyticsEvent =
   | 'task_created'
   | 'task_completed'
   | 'goal_created'
+  | 'project_created'
   | 'chat_message_sent'
   | 'plan_imported'
   | 'nudge_shown'

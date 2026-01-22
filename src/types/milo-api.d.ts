@@ -1,6 +1,6 @@
 import { milo } from "@/lib/api"
 // Global type declaration for the milo API exposed via contextBridge
-import type { Goal, Task, Category, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from './index'
+import type { Goal, Task, Category, Project, ActivityLog, DailyScore, AppClassification, ActivityState, CurrentActivityState } from './index'
 
 // Re-export AI input/output types
 export type {
@@ -105,6 +105,7 @@ export interface MiloAPI {
     defer: (id: string) => Promise<Task | null>
     getAllIncomplete: () => Promise<Task[]>
     getByCategory: (categoryId: string) => Promise<Task[]>
+    getByProject: (projectId: string) => Promise<Task[]>
     getSignalQueue: (limit?: number) => Promise<Task[]>
     getBacklog: (signalQueueIds: string[]) => Promise<Task[]>
     getWorkedYesterday: () => Promise<Task[]>
@@ -119,6 +120,22 @@ export interface MiloAPI {
     update: (id: string, updates: Partial<Category>) => Promise<Category | null>
     delete: (id: string) => Promise<boolean>
     reorder: (orderedIds: string[]) => Promise<void>
+  }
+  projects: {
+    getAll: () => Promise<Project[]>
+    getActive: () => Promise<Project[]>
+    getByStatus: (status: Project['status']) => Promise<Project[]>
+    getById: (id: string) => Promise<Project | null>
+    getByPath: (path: string) => Promise<Project | null>
+    create: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Project | null>
+    update: (id: string, updates: Partial<Project>) => Promise<Project | null>
+    delete: (id: string) => Promise<boolean>
+    archive: (id: string) => Promise<Project | null>
+    pause: (id: string) => Promise<Project | null>
+    activate: (id: string) => Promise<Project | null>
+    complete: (id: string) => Promise<Project | null>
+    reorder: (orderedIds: string[]) => Promise<void>
+    search: (query: string) => Promise<Project[]>
   }
   activity: {
     getToday: () => Promise<ActivityLog[]>

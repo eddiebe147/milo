@@ -10,6 +10,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     description: row.description as string | undefined,
     goalId: row.goal_id as string | null,
     categoryId: row.category_id as string | null,
+    projectId: row.project_id as string | null,
     status: row.status as Task['status'],
     priority: row.priority as number,
     rationale: row.rationale as string | undefined,
@@ -97,14 +98,15 @@ export const tasksRepository = {
     const endDate = task.endDate || task.scheduledDate
 
     db.prepare(`
-      INSERT INTO tasks (id, title, description, goal_id, category_id, status, priority, rationale, scheduled_date, start_date, end_date, estimated_days, days_worked, last_worked_date, completed_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (id, title, description, goal_id, category_id, project_id, status, priority, rationale, scheduled_date, start_date, end_date, estimated_days, days_worked, last_worked_date, completed_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       task.title,
       task.description ?? null,
       task.goalId,
       task.categoryId ?? null,
+      task.projectId ?? null,
       task.status,
       task.priority,
       task.rationale ?? null,
@@ -136,6 +138,7 @@ export const tasksRepository = {
         description = ?,
         goal_id = ?,
         category_id = ?,
+        project_id = ?,
         status = ?,
         priority = ?,
         rationale = ?,
@@ -153,6 +156,7 @@ export const tasksRepository = {
       updates.description ?? existing.description ?? null,
       updates.goalId ?? existing.goalId,
       updates.categoryId ?? existing.categoryId ?? null,
+      updates.projectId ?? existing.projectId ?? null,
       updates.status ?? existing.status,
       updates.priority ?? existing.priority,
       updates.rationale ?? existing.rationale ?? null,
@@ -249,6 +253,19 @@ export const tasksRepository = {
         ORDER BY priority ASC, start_date ASC
       `)
       .all(categoryId) as TaskRow[]
+    return rows.map(rowToTask)
+  },
+
+  // Get tasks by project
+  getByProject(projectId: string): Task[] {
+    const db = getDatabase()
+    const rows = db
+      .prepare(`
+        SELECT * FROM tasks
+        WHERE project_id = ? AND status IN ('pending', 'in_progress')
+        ORDER BY priority ASC, start_date ASC
+      `)
+      .all(projectId) as TaskRow[]
     return rows.map(rowToTask)
   },
 
