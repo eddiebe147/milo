@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useTasksStore } from '@/stores'
 import { TaskRow } from './TaskRow'
+import { EditTaskModal } from './EditTaskModal'
+import type { Task } from '@/types'
 
 export const MissionPanel: React.FC = () => {
   const {
@@ -30,6 +32,9 @@ export const MissionPanel: React.FC = () => {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Edit modal state
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   // Fetch tasks on mount
   useEffect(() => {
@@ -234,12 +239,20 @@ export const MissionPanel: React.FC = () => {
                   onToggleComplete={() => handleToggleTask(task.id, task.status)}
                   onStart={() => handleSmartStart(task.id)}
                   onExpand={() => handleExpandTask(task.id)}
+                  onEdit={() => setEditingTask(task)}
                 />
               )
             })}
           </div>
         )}
       </CardContent>
+
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        isOpen={editingTask !== null}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+      />
     </Card>
   )
 }

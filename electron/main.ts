@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, session, systemPreferences } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
@@ -66,6 +66,8 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+    // Open DevTools for debugging
+    mainWindow?.webContents.openDevTools({ mode: 'detach' })
   })
 
   mainWindow.on('close', (event) => {
@@ -982,6 +984,36 @@ app.whenReady().then(() => {
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // Request microphone permissions for voice assistant (macOS)
+  if (process.platform === 'darwin') {
+    const micStatus = systemPreferences.getMediaAccessStatus('microphone')
+    console.log('[Main] Microphone permission status:', micStatus)
+    if (micStatus !== 'granted') {
+      systemPreferences.askForMediaAccess('microphone').then((granted) => {
+        console.log('[Main] Microphone access granted:', granted)
+      })
+    }
+  }
+
+  // Set up permission handler for media access (speech recognition)
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    // Allow media permissions (includes microphone for speech recognition)
+    if (permission === 'media') {
+      console.log('[Main] Granting permission:', permission)
+      callback(true)
+    } else {
+      callback(true) // Allow other permissions too for now
+    }
+  })
+
+  // Also handle permission check requests
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'media') {
+      return true
+    }
+    return true // Allow other checks too
   })
 
   createTray()

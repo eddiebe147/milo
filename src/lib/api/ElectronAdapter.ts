@@ -2,27 +2,35 @@ import { PlatformAdapter } from './types'
 
 /**
  * Electron adapter that wraps the window.milo API exposed via preload
+ * 
+ * Uses a getter pattern to lazily access window.milo properties,
+ * preventing errors when this module is evaluated on web where window.milo doesn't exist.
  */
-export const ElectronAdapter: PlatformAdapter = {
-    platform: 'electron',
-    window: window.milo.window,
-    tray: window.milo.tray,
-    events: window.milo.events,
-    goals: window.milo.goals,
-    tasks: window.milo.tasks,
-    categories: window.milo.categories,
-    projects: window.milo.projects,
-    activity: window.milo.activity,
-    classifications: window.milo.classifications,
-    scores: window.milo.scores,
-    monitoring: window.milo.monitoring,
-    ai: window.milo.ai,
-    plan: window.milo.plan,
-    nudge: window.milo.nudge,
-    taskExecution: window.milo.taskExecution,
-    settings: window.milo.settings,
-    analytics: window.milo.analytics,
-    updates: window.milo.updates,
-    chat: window.milo.chat,
+function createElectronAdapter(): PlatformAdapter {
+    // This function is only called when isElectron is true
+    const milo = window.milo
+    return {
+        platform: 'electron',
+        window: milo.window,
+        tray: milo.tray,
+        events: milo.events,
+        goals: milo.goals,
+        tasks: milo.tasks,
+        categories: milo.categories,
+        projects: milo.projects,
+        activity: milo.activity,
+        classifications: milo.classifications,
+        scores: milo.scores,
+        monitoring: milo.monitoring,
+        ai: milo.ai,
+        plan: milo.plan,
+        nudge: milo.nudge,
+        taskExecution: milo.taskExecution,
+        settings: milo.settings,
+        analytics: milo.analytics,
+        updates: milo.updates,
+        chat: milo.chat,
+    }
 }
 
+export { createElectronAdapter }

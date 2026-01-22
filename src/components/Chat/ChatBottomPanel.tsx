@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { ChevronUp, ChevronDown, Trash2, MessageSquare, Loader2, Settings, History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useChatStore } from '@/stores'
@@ -21,6 +21,7 @@ import { VoiceGaugeDrawer } from '@/components/VoiceAssistant'
  * - Auto-expands when receiving AI response
  * - Click outside or chevron to collapse
  * - Pip-Boy terminal aesthetic
+ * - Voice dictation: speak to type, auto-send when done
  *
  * Layout:
  * - Collapsed: [💬 input...] [↑] [Send]
@@ -29,6 +30,8 @@ import { VoiceGaugeDrawer } from '@/components/VoiceAssistant'
 export const ChatBottomPanel: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [inputText, setInputText] = useState('')
+  const [isVoiceActive, setIsVoiceActive] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const wasGeneratingRef = useRef(false)
 
@@ -80,11 +83,28 @@ export const ChatBottomPanel: React.FC = () => {
     }
   }, [isExpanded])
 
-  const handleSendMessage = (content: string) => {
+  // Handle voice transcript updates (dictation mode)
+  const handleVoiceTranscript = useCallback((text: string, isFinal: boolean) => {
+    setInputText(text)
+    if (isFinal && text.trim()) {
+      // Final transcript - keep text for review, user can send manually or auto-send
+    }
+  }, [])
+
+  // Handle voice-initiated send (after speech ends)
+  const handleVoiceSend = useCallback(() => {
+    if (inputText.trim() && !isGenerating) {
+      sendMessage(inputText.trim())
+      setInputText('')
+      setIsExpanded(true)
+    }
+  }, [inputText, isGenerating, sendMessage])
+
+  const handleSendMessage = useCallback((content: string) => {
     sendMessage(content)
-    // Expand to show the response
+    setInputText('') // Clear after send
     setIsExpanded(true)
-  }
+  }, [sendMessage])
 
   const handleClearConversation = () => {
     if (window.confirm('Clear all messages? This cannot be undone.')) {
@@ -169,7 +189,11 @@ export const ChatBottomPanel: React.FC = () => {
 
               <div className="flex items-center gap-1">
                 {/* Voice Gauge Trigger */}
-                <VoiceGaugeDrawer />
+                <VoiceGaugeDrawer
+                  onTranscript={handleVoiceTranscript}
+                  onSend={handleVoiceSend}
+                  onVoiceActiveChange={setIsVoiceActive}
+                />
 
                 <Button
                   onClick={() => setIsSettingsOpen(true)}
@@ -228,9 +252,11 @@ export const ChatBottomPanel: React.FC = () => {
             {/* Input Area */}
             <div className="border-t border-pipboy-border bg-pipboy-surface/30">
               <ChatInput
+                value={inputText}
+                onChange={setInputText}
                 onSend={handleSendMessage}
                 disabled={isGenerating}
-                placeholder="Type message to MILO..."
+                placeholder={isVoiceActive ? 'Listening...' : 'Type message to MILO...'}
               />
             </div>
           </div>
@@ -242,15 +268,21 @@ export const ChatBottomPanel: React.FC = () => {
 
           <div className="flex-1">
             <ChatInput
+              value={inputText}
+              onChange={setInputText}
               onSend={handleSendMessage}
               disabled={isGenerating}
-              placeholder="Chat with MILO..."
+              placeholder={isVoiceActive ? 'Listening...' : 'Chat with MILO...'}
             />
           </div>
 
           {/* Voice Gauge Trigger - Swiss Army knife style, breaks out of the box */}
           <div className="relative">
-            <VoiceGaugeDrawer />
+            <VoiceGaugeDrawer
+              onTranscript={handleVoiceTranscript}
+              onSend={handleVoiceSend}
+              onVoiceActiveChange={setIsVoiceActive}
+            />
           </div>
 
           <Button

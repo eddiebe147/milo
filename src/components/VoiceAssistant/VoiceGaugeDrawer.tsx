@@ -1,35 +1,47 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff } from 'lucide-react'
-import { WaveformMonitor } from '@/components/ui/WaveformMonitor'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 import { useChatStore } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 
 /**
- * VoiceGaugeDrawer - Submarine-style slide-out voice gauge
+ * VoiceGaugeDrawer - Submarine-style voice button with red pulsing backlight
  *
  * Design:
- * - Round gauge embedded in panel edge (like a bulkhead instrument)
- * - Slides out 3/4 visible when active
- * - Industrial bezel with rivets
- * - Waveform responds to voice amplitude
+ * - Simple mic button in chat panel
+ * - Pulses red like a backlit submarine button when active
+ * - No sliding animation - just a button with glowing effect
  *
- * Inspired by: 90s Winamp skins, submarine control panels, car dashboard gauges
+ * Dictation Mode:
+ * - Transcribes speech in real-time to chat input
+ * - Auto-sends after speech pause (1.5s delay)
  */
 
 interface VoiceGaugeDrawerProps {
   className?: string
+  /** Called with transcript updates (for dictation into chat input) */
+  onTranscript?: (text: string, isFinal: boolean) => void
+  /** Called when speech ends and message should be sent */
+  onSend?: () => void
+  /** Called when voice active state changes */
+  onVoiceActiveChange?: (isActive: boolean) => void
 }
 
-export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = '' }) => {
+export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({
+  className = '',
+  onTranscript,
+  onSend,
+  onVoiceActiveChange,
+}) => {
   const { settings, toggleVoiceMute } = useSettingsStore()
   const { sendMessage, isGenerating, messages } = useChatStore()
 
-  const [isOpen, setIsOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [pendingTranscript, setPendingTranscript] = useState('')
   const lastMessageCountRef = useRef(messages.length)
   const processingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoSendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // TTS hook
   const { speak, isSpeaking, isSupported: ttsSupported } = useTextToSpeech({
@@ -37,10 +49,6 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
     rate: settings.voiceRate,
     onEnd: () => {
       setIsProcessing(false)
-      // Auto-close after speaking (with delay)
-      setTimeout(() => {
-        if (!isListening) setIsOpen(false)
-      }, 1500)
     }
   })
 
@@ -49,7 +57,7 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
     speakRef.current = speak
   }, [speak])
 
-  // Voice input hook
+  // Voice input hook - dictation mode
   const {
     isListening,
     isSupported: voiceInputSupported,
@@ -58,14 +66,38 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
     clearTranscript,
     error: voiceError,
   } = useVoiceInput({
+    continuous: true, // Keep listening until manually stopped
     onTranscript: (text, isFinal) => {
+      // Clear any pending auto-send when new speech comes in
+      if (autoSendTimeoutRef.current) {
+        clearTimeout(autoSendTimeoutRef.current)
+        autoSendTimeoutRef.current = null
+      }
+
       if (isFinal && text.trim()) {
-        handleVoiceCommand(text.trim())
+        // Final transcript - update pending and notify parent
+        setPendingTranscript(prev => prev + (prev ? ' ' : '') + text.trim())
+        const fullText = pendingTranscript + (pendingTranscript ? ' ' : '') + text.trim()
+        onTranscript?.(fullText, true)
+
+        // Auto-send after pause (1.5 seconds of silence)
+        autoSendTimeoutRef.current = setTimeout(() => {
+          handleAutoSend()
+        }, 1500)
+      } else {
+        // Interim - show in real-time
+        const currentFull = pendingTranscript + (pendingTranscript ? ' ' : '') + text
+        onTranscript?.(currentFull, false)
       }
     }
   })
 
-  // Watch for AI responses
+  // Notify parent of voice active state
+  useEffect(() => {
+    onVoiceActiveChange?.(isListening)
+  }, [isListening, onVoiceActiveChange])
+
+  // Watch for AI responses and speak them
   useEffect(() => {
     if (!settings.voiceEnabled || settings.voiceMuted || !isProcessing) return
 
@@ -82,33 +114,41 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
     lastMessageCountRef.current = messages.length
   }, [messages, isProcessing, settings.voiceEnabled, settings.voiceMuted])
 
-  // Cleanup
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       window.speechSynthesis?.cancel()
       if (processingTimeoutRef.current) {
         clearTimeout(processingTimeoutRef.current)
       }
+      if (autoSendTimeoutRef.current) {
+        clearTimeout(autoSendTimeoutRef.current)
+      }
     }
   }, [])
 
-  const handleVoiceCommand = async (command: string) => {
-    if (isListening) toggleListening()
-    clearTranscript()
-    setIsProcessing(true)
-
-    processingTimeoutRef.current = setTimeout(() => {
-      setIsProcessing(false)
-    }, 30000)
-
-    try {
-      await sendMessage(command)
-    } catch (error) {
-      console.error('Voice command failed:', error)
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current)
+  // Handle auto-send after speech pause
+  const handleAutoSend = () => {
+    if (pendingTranscript.trim() && !isGenerating) {
+      // Stop listening when sending
+      if (isListening) {
+        toggleListening()
       }
-      setIsProcessing(false)
+
+      // If parent provided onSend, use that; otherwise send directly
+      if (onSend) {
+        onSend()
+      } else {
+        sendMessage(pendingTranscript.trim())
+      }
+      setPendingTranscript('')
+      clearTranscript()
+      setIsProcessing(true)
+
+      // Timeout for processing
+      processingTimeoutRef.current = setTimeout(() => {
+        setIsProcessing(false)
+      }, 30000)
     }
   }
 
@@ -119,26 +159,17 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
       return
     }
 
-    if (!isOpen) {
-      setIsOpen(true)
-      // Start listening after drawer opens
-      setTimeout(() => toggleListening(), 300)
-    } else if (isListening) {
-      toggleListening()
-    } else if (!isProcessing && !isSpeaking) {
-      toggleListening()
-    }
+    // Toggle listening directly - no drawer animation
+    toggleListening()
   }
 
   // Long press to mute
-  const handleLongPress = () => {
-    toggleVoiceMute()
-  }
-
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleMouseDown = () => {
-    longPressTimer.current = setTimeout(handleLongPress, 500)
+    longPressTimer.current = setTimeout(() => {
+      toggleVoiceMute()
+    }, 500)
   }
 
   const handleMouseUp = () => {
@@ -148,23 +179,6 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
     }
   }
 
-  const handleClose = () => {
-    if (isListening) toggleListening()
-    window.speechSynthesis?.cancel()
-    setIsOpen(false)
-    setIsProcessing(false)
-  }
-
-  // Status for LCD display
-  const getStatus = () => {
-    if (isSpeaking) return { text: 'TRANSMITTING', color: 'text-accent' }
-    if (isGenerating || isProcessing) return { text: 'PROCESSING', color: 'text-yellow-400' }
-    if (isListening) return { text: 'RECEIVING', color: 'text-primary' }
-    if (voiceError) return { text: 'ERROR', color: 'text-red-500' }
-    return { text: 'STANDBY', color: 'text-gray-500' }
-  }
-
-  const status = getStatus()
   const isActive = isListening || isSpeaking || isGenerating || isProcessing
   const isDisabled = !voiceInputSupported || !ttsSupported || !settings.voiceEnabled
 
@@ -172,7 +186,7 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
 
   return (
     <div className={`relative ${className}`}>
-      {/* Single Mic Button - shows mute state, long-press to mute */}
+      {/* Submarine-style backlit button */}
       <button
         onClick={handleToggleVoice}
         onMouseDown={handleMouseDown}
@@ -182,27 +196,73 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
         onTouchEnd={handleMouseUp}
         disabled={isDisabled}
         className={`
-          relative p-2 rounded transition-all duration-200
-          ${settings.voiceMuted
-            ? 'text-red-400 hover:text-red-300'
-            : isOpen
-              ? 'text-primary'
-              : 'text-pipboy-green-dim hover:text-pipboy-green'}
+          relative p-2 rounded-full transition-all duration-200
           ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
         `}
         title={
           settings.voiceMuted
             ? 'Click to unmute (long-press to toggle mute)'
-            : isOpen
-              ? 'Voice active (long-press to mute)'
-              : 'Activate voice (long-press to mute)'
+            : isListening
+              ? 'Click to stop listening'
+              : 'Click to speak to MILO (long-press to mute)'
         }
       >
-        {isListening ? (
-          <Mic size={18} className="animate-pulse" />
-        ) : (
-          <MicOff size={18} />
+        {/* Red backlight glow when active */}
+        {isListening && (
+          <>
+            {/* Outer pulsing glow */}
+            <div
+              className="absolute inset-0 rounded-full animate-pulse"
+              style={{
+                background: 'radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, transparent 70%)',
+                transform: 'scale(1.8)',
+              }}
+            />
+            {/* Inner steady glow */}
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, rgba(239, 68, 68, 0.6) 0%, rgba(239, 68, 68, 0.2) 50%, transparent 70%)',
+                boxShadow: '0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 8px rgba(239, 68, 68, 0.3)',
+              }}
+            />
+          </>
         )}
+
+        {/* Processing/Speaking glow (yellow/amber) */}
+        {(isProcessing || isSpeaking) && !isListening && (
+          <div
+            className="absolute inset-0 rounded-full animate-pulse"
+            style={{
+              background: 'radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%)',
+              boxShadow: '0 0 10px rgba(251, 191, 36, 0.4)',
+            }}
+          />
+        )}
+
+        {/* Mic icon */}
+        <div className="relative z-10">
+          {settings.voiceMuted ? (
+            <MicOff
+              size={18}
+              className="text-red-400"
+            />
+          ) : isListening ? (
+            <Mic
+              size={18}
+              className="text-red-400"
+              style={{ filter: 'drop-shadow(0 0 4px rgba(239, 68, 68, 0.8))' }}
+            />
+          ) : (
+            <Mic
+              size={18}
+              className={`
+                ${isProcessing || isSpeaking ? 'text-amber-400' : 'text-pipboy-green-dim hover:text-pipboy-green'}
+                transition-colors duration-200
+              `}
+            />
+          )}
+        </div>
 
         {/* Mute indicator - small red dot */}
         {settings.voiceMuted && (
@@ -210,130 +270,12 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({ className = 
         )}
       </button>
 
-      {/* Slide-out Gauge - Round, breaks out of the chat panel box */}
-      <div
-        className={`
-          absolute z-50
-          transition-all duration-300 ease-out
-          ${isOpen ? 'translate-x-[25%] opacity-100' : 'translate-x-[100%] opacity-0'}
-        `}
-        style={{
-          right: '-20px', // Starts from the edge of parent
-          top: '50%',
-          transform: `translateY(-50%) ${isOpen ? 'translateX(25%)' : 'translateX(100%)'}`,
-        }}
-      >
-        {/* Industrial Bezel Frame */}
-        <div className="relative">
-          {/* Outer bezel - brushed metal effect */}
-          <div
-            className="
-              w-40 h-40 rounded-full
-              bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900
-              p-1
-              shadow-2xl
-            "
-            style={{
-              boxShadow: `
-                inset 2px 2px 4px rgba(255,255,255,0.1),
-                inset -2px -2px 4px rgba(0,0,0,0.5),
-                0 0 30px rgba(0,0,0,0.8),
-                0 0 60px rgba(0,255,65,0.1)
-              `,
-            }}
-          >
-            {/* Inner ring - industrial groove */}
-            <div
-              className="
-                w-full h-full rounded-full
-                bg-gradient-to-br from-gray-800 to-gray-900
-                p-1
-              "
-              style={{
-                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8)',
-              }}
-            >
-              {/* Waveform Display Area */}
-              <div className="w-full h-full rounded-full overflow-hidden relative bg-black">
-                <WaveformMonitor isActive={isActive} size="xl" className="scale-90" />
-
-                {/* LCD Status Display Overlay */}
-                <div
-                  className="
-                    absolute bottom-4 left-1/2 -translate-x-1/2
-                    px-3 py-1 rounded
-                    bg-black/80 border border-gray-700
-                    font-mono text-[10px] tracking-wider
-                    backdrop-blur-sm
-                  "
-                >
-                  <span className={`${status.color} animate-pulse`}>
-                    {status.text}
-                  </span>
-                </div>
-
-                {/* Transcript overlay when listening */}
-                {isListening && transcript && (
-                  <div
-                    className="
-                      absolute top-4 left-1/2 -translate-x-1/2
-                      max-w-[80%] px-2 py-1 rounded
-                      bg-black/90 border border-primary/50
-                      font-mono text-[9px] text-primary
-                      truncate
-                    "
-                  >
-                    {transcript}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Rivets - Industrial detail */}
-          {[0, 90, 180, 270].map((angle) => (
-            <div
-              key={angle}
-              className="
-                absolute w-3 h-3 rounded-full
-                bg-gradient-to-br from-gray-600 to-gray-800
-                border border-gray-500
-              "
-              style={{
-                top: '50%',
-                left: '50%',
-                transform: `
-                  translate(-50%, -50%)
-                  rotate(${angle}deg)
-                  translateY(-72px)
-                `,
-                boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.2), inset -1px -1px 2px rgba(0,0,0,0.5)',
-              }}
-            />
-          ))}
-
-          {/* Close button - small, industrial */}
-          {isOpen && (
-            <button
-              onClick={handleClose}
-              className="
-                absolute -left-2 top-1/2 -translate-y-1/2
-                w-6 h-12 rounded-l
-                bg-gradient-to-r from-gray-700 to-gray-800
-                border border-gray-600 border-r-0
-                flex items-center justify-center
-                text-gray-400 hover:text-white
-                transition-colors
-              "
-              style={{
-                boxShadow: 'inset 1px 0 3px rgba(255,255,255,0.1)',
-              }}
-            >
-              <span className="text-xs">×</span>
-            </button>
-          )}
+      {/* Error tooltip */}
+      {voiceError && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-red-900/90 text-red-200 text-xs whitespace-nowrap">
+          {voiceError}
         </div>
-      </div>
+      )}
     </div>
   )
 }

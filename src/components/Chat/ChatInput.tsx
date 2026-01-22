@@ -7,6 +7,12 @@ interface ChatInputProps {
   onSend: (message: string) => void
   disabled?: boolean
   placeholder?: string
+  /** Controlled mode: external value */
+  value?: string
+  /** Controlled mode: external onChange handler */
+  onChange?: (value: string) => void
+  /** Auto-focus on mount */
+  autoFocus?: boolean
 }
 
 /**
@@ -18,18 +24,40 @@ interface ChatInputProps {
  * - Disabled state while generating
  * - Auto-refocus after AI response completes
  * - Pip-Boy terminal styling
+ * - Controlled mode for voice dictation
  *
  * Usage:
  * <ChatInput onSend={handleSend} disabled={isGenerating} />
+ * 
+ * Controlled mode (for voice):
+ * <ChatInput value={text} onChange={setText} onSend={handleSend} />
  */
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   disabled = false,
   placeholder = 'Type your message...',
+  value: externalValue,
+  onChange: externalOnChange,
+  autoFocus = false,
 }) => {
-  const [message, setMessage] = useState('')
+  // Internal state for uncontrolled mode
+  const [internalMessage, setInternalMessage] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const wasDisabledRef = useRef(disabled)
+
+  // Controlled vs uncontrolled mode
+  const isControlled = externalValue !== undefined
+  const message = isControlled ? externalValue : internalMessage
+  const setMessage = isControlled
+    ? (val: string) => externalOnChange?.(val)
+    : setInternalMessage
+
+  // Auto-focus on mount if requested
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus()
+    }
+  }, [autoFocus])
 
   // Auto-focus when disabled changes from true to false (AI finished generating)
   useEffect(() => {
@@ -82,3 +110,4 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     </div>
   )
 }
+

@@ -12,7 +12,8 @@ import {
     Hand,
     Plus,
     X,
-    Trash2
+    Trash2,
+    Pencil
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,7 @@ interface TaskRowProps {
     onStart: () => void
     onExpand: () => void
     onDelete?: () => void
+    onEdit?: () => void
 }
 
 // Icon for each action type
@@ -77,6 +79,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     onStart,
     onExpand,
     onDelete,
+    onEdit,
 }) => {
     const isCompleted = task.status === 'completed'
     const isInProgress = task.status === 'in_progress' || isActive
@@ -303,39 +306,56 @@ export const TaskRow: React.FC<TaskRowProps> = ({
                         </div>
                     )}
 
-                    {/* Delete action - +/X pattern */}
-                    {onDelete && (
-                        <div className="pt-2 border-t border-pipboy-border/30 flex items-center gap-2">
-                            {!showDeleteConfirm ? (
+                    {/* Edit and Delete actions */}
+                    {(onEdit || onDelete) && (
+                        <div className="pt-2 border-t border-pipboy-border/30 flex items-center gap-4">
+                            {/* Edit action */}
+                            {onEdit && (
                                 <button
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className="flex items-center gap-1 text-[10px] text-pipboy-green-dim hover:text-red-400 transition-colors"
-                                    title="Delete task"
+                                    onClick={onEdit}
+                                    className="flex items-center gap-1 text-[10px] text-pipboy-green-dim hover:text-pipboy-green transition-colors"
+                                    title="Edit task"
                                 >
-                                    <Plus size={12} className="rotate-45" />
-                                    <span>Delete</span>
+                                    <Pencil size={12} />
+                                    <span>Edit</span>
                                 </button>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-red-400">Delete this task?</span>
-                                    <button
-                                        onClick={() => {
-                                            onDelete()
-                                            setShowDeleteConfirm(false)
-                                        }}
-                                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 border border-red-500/50 rounded-sm hover:bg-red-500/30 transition-colors"
-                                    >
-                                        <Trash2 size={10} />
-                                        <span>Yes</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setShowDeleteConfirm(false)}
-                                        className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-pipboy-green-dim border border-pipboy-border rounded-sm hover:border-pipboy-green/50 transition-colors"
-                                    >
-                                        <X size={10} />
-                                        <span>No</span>
-                                    </button>
-                                </div>
+                            )}
+
+                            {/* Delete action - +/X pattern */}
+                            {onDelete && (
+                                <>
+                                    {!showDeleteConfirm ? (
+                                        <button
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            className="flex items-center gap-1 text-[10px] text-pipboy-green-dim hover:text-red-400 transition-colors"
+                                            title="Delete task"
+                                        >
+                                            <Plus size={12} className="rotate-45" />
+                                            <span>Delete</span>
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-red-400">Delete this task?</span>
+                                            <button
+                                                onClick={() => {
+                                                    onDelete()
+                                                    setShowDeleteConfirm(false)
+                                                }}
+                                                className="flex items-center gap-1 px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 border border-red-500/50 rounded-sm hover:bg-red-500/30 transition-colors"
+                                            >
+                                                <Trash2 size={10} />
+                                                <span>Yes</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setShowDeleteConfirm(false)}
+                                                className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-pipboy-green-dim border border-pipboy-border rounded-sm hover:border-pipboy-green/50 transition-colors"
+                                            >
+                                                <X size={10} />
+                                                <span>No</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}

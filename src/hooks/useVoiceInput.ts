@@ -25,7 +25,7 @@ interface SpeechRecognition extends EventTarget {
 }
 
 interface SpeechRecognitionConstructor {
-  new (): SpeechRecognition
+  new(): SpeechRecognition
 }
 
 declare global {
@@ -72,27 +72,40 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   const [error, setError] = useState<string | null>(null)
 
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // Ref to track if recognition is actively running (avoids async state race condition)
+  const isListeningRef = useRef(false)
   const isSupported = typeof window !== 'undefined' &&
     (!!window.SpeechRecognition || !!window.webkitSpeechRecognition)
 
   // Initialize speech recognition
   useEffect(() => {
-    if (!isSupported) return
+    console.log('[VoiceInput] Initializing, isSupported:', isSupported)
+    if (!isSupported) {
+      console.log('[VoiceInput] Speech recognition not supported')
+      return
+    }
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognitionAPI) return
+    if (!SpeechRecognitionAPI) {
+      console.log('[VoiceInput] No SpeechRecognition API found')
+      return
+    }
 
+    console.log('[VoiceInput] Creating speech recognition instance')
     const recognition = new SpeechRecognitionAPI()
     recognition.continuous = continuous
     recognition.interimResults = true
     recognition.lang = language
 
     recognition.onstart = () => {
+      console.log('[VoiceInput] Speech recognition started')
+      isListeningRef.current = true
       setIsListening(true)
       setError(null)
     }
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      console.log('[VoiceInput] Got result event', event.results.length, 'results')
       let finalTranscript = ''
       let interim = ''
 
@@ -116,6 +129,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.log('[VoiceInput] Error:', event.error)
       const errorMessage = getErrorMessage(event.error)
       setError(errorMessage)
       setIsListening(false)
@@ -123,6 +137,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
 
     recognition.onend = () => {
+      console.log('[VoiceInput] Speech recognition ended')
+      isListeningRef.current = false
       setIsListening(false)
     }
 
@@ -134,29 +150,39 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   }, [isSupported, language, continuous, onTranscript, onError])
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current || isListening) return
+    console.log('[VoiceInput] startListening called, recognitionRef:', !!recognitionRef.current, 'isListeningRef:', isListeningRef.current)
+    // Use ref for synchronous check to prevent race condition
+    if (!recognitionRef.current || isListeningRef.current) {
+      console.log('[VoiceInput] Skipping start - already listening or no recognition')
+      return
+    }
 
+    // Mark as listening immediately (before async start completes)
+    isListeningRef.current = true
     setTranscript('')
     setInterimTranscript('')
     setError(null)
 
     try {
+      console.log('[VoiceInput] Calling recognition.start()')
       recognitionRef.current.start()
     } catch (err) {
-      // Recognition might already be started
-      console.error('Failed to start speech recognition:', err)
+      // Reset ref if start fails
+      isListeningRef.current = false
+      console.error('[VoiceInput] Failed to start speech recognition:', err)
     }
-  }, [isListening])
+  }, [])  // No dependencies needed since we use refs
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current || !isListening) return
+    // Use ref for synchronous check
+    if (!recognitionRef.current || !isListeningRef.current) return
 
     try {
       recognitionRef.current.stop()
     } catch (err) {
       console.error('Failed to stop speech recognition:', err)
     }
-  }, [isListening])
+  }, [])  // No dependencies needed since we use refs
 
   const toggleListening = useCallback(() => {
     if (isListening) {

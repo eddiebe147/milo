@@ -4,6 +4,7 @@ import { Radio, Loader2, AlertCircle, RefreshCw, Pause, Filter } from 'lucide-re
 import { useTasksStore, useProjectsStore, useSettingsStore } from '@/stores'
 import { TaskRow } from './TaskRow'
 import { TaskExecutionModal, type ExecutionTarget } from './TaskExecutionModal'
+import { EditTaskModal } from './EditTaskModal'
 import type { Task } from '@/types'
 import {
   DndContext,
@@ -41,6 +42,7 @@ interface SortableTaskRowProps {
   onStart: () => void
   onExpand: () => void
   onDelete: () => void
+  onEdit: () => void
 }
 
 const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
@@ -63,9 +65,8 @@ const SortableTaskRow: React.FC<SortableTaskRowProps> = (props) => {
     <div
       ref={setNodeRef}
       style={style}
-      className={`border-b border-pipboy-border/50 last:border-b-0 ${
-        isDragging ? 'opacity-50' : ''
-      }`}
+      className={`border-b border-pipboy-border/50 last:border-b-0 ${isDragging ? 'opacity-50' : ''
+        }`}
     >
       {/* Task row with drag handle on the far left */}
       <div className="flex items-stretch min-w-0 overflow-hidden">
@@ -147,6 +148,9 @@ export const SignalQueue: React.FC = () => {
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null)
   const [projectPath, setProjectPath] = useState<string | null>(null)
+
+  // Edit modal state
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   // Fetch queue on mount
   useEffect(() => {
@@ -441,6 +445,7 @@ export const SignalQueue: React.FC = () => {
                     onStart={() => handleOpenExecutionModal(task)}
                     onExpand={() => handleExpandTask(task.id)}
                     onDelete={() => deleteTask(task.id)}
+                    onEdit={() => setEditingTask(task)}
                   />
                 )
               })}
@@ -459,6 +464,13 @@ export const SignalQueue: React.FC = () => {
         onClose={handleCloseModal}
         onExecute={handleExecute}
         onRegeneratePrompt={handleRegeneratePrompt}
+      />
+
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        isOpen={editingTask !== null}
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
       />
     </div>
   )
