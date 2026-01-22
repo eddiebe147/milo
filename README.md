@@ -8,12 +8,32 @@
 
 ## Quick Install (macOS)
 
+### Option A: Download DMG (Easiest)
+
 1. **Download** the latest `MILO-x.x.x.dmg` from [Releases](../../releases)
 2. **Open** the DMG and drag MILO to Applications
 3. **First launch**: Right-click the app → "Open" (required for unsigned apps)
 4. **Setup**: Enter your [Claude API key](https://console.anthropic.com/) in Settings
 
 > **Note**: MILO is currently unsigned. macOS will warn about an "unidentified developer" on first launch. Right-click → Open bypasses this safely.
+
+### Option B: Use Claude Code (Developer Setup)
+
+Run this command in Claude Code:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/eddiebe147/milo/main/scripts/setup-claude.sh) YOUR_API_KEY
+```
+
+This will:
+- Clone the repo
+- Install dependencies
+- Start MILO in dev mode (web or desktop)
+- Open it in your browser
+
+Or just ask Claude Code: *"Set up and run MILO from github.com/eddiebe147/milo with my API key"*
+
+See [CLAUDE.md](./CLAUDE.md) for full Claude Code integration guide.
 
 ---
 
