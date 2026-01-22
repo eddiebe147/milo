@@ -174,8 +174,8 @@ function getDailyStats(db: any, date: string): DailyStats | null {
 
   // Get streak
   const streakStmt = db.prepare(`
-    SELECT streak
-    FROM daily_stats
+    SELECT streak_day as streak
+    FROM daily_scores
     WHERE date = ?
   `);
   const streakRow = streakStmt.get(date) as { streak: number } | undefined;
@@ -197,8 +197,8 @@ function getDailyStats(db: any, date: string): DailyStats | null {
  */
 function getCurrentStreak(db: any): { streak: number; isActive: boolean; lastDate: string | null } {
   const stmt = db.prepare(`
-    SELECT date, streak
-    FROM daily_stats
+    SELECT date, streak_day as streak
+    FROM daily_scores
     ORDER BY date DESC
     LIMIT 1
   `);
