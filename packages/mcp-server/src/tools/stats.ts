@@ -118,10 +118,10 @@ async function statsGetDay(args: unknown): Promise<{ content: { type: 'text'; te
     const tasksRow = tasksStmt.get(targetDate) as { count: number };
     const tasksCompleted = tasksRow?.count || 0;
 
-    // Get current streak from daily_stats if it exists
+    // Get current streak from daily_scores if it exists
     const streakStmt = db.prepare(`
-      SELECT streak
-      FROM daily_stats
+      SELECT streak_day as streak
+      FROM daily_scores
       WHERE date = ?
     `);
     const streakRow = streakStmt.get(targetDate) as { streak: number } | undefined;
@@ -304,10 +304,10 @@ async function statsGetStreak(): Promise<{ content: { type: 'text'; text: string
   const db = getDatabase();
 
   try {
-    // Get the most recent streak value from daily_stats
+    // Get the most recent streak value from daily_scores
     const stmt = db.prepare(`
-      SELECT date, streak, signal_score
-      FROM daily_stats
+      SELECT date, streak_day as streak, score as signal_score
+      FROM daily_scores
       ORDER BY date DESC
       LIMIT 1
     `);
