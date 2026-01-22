@@ -48,7 +48,7 @@ export const MiloLogo: React.FC<MiloLogoProps> = ({
                     {/* Status indicators */}
                     <div className="flex justify-between w-full px-1 mt-2">
                         <span className="text-[10px] text-pipboy-green/60 font-mono tracking-[0.15em] uppercase">
-                            v0.4.0
+                            v0.5.0
                         </span>
                         <span className="text-[10px] text-pipboy-orange font-mono tracking-[0.15em] uppercase font-bold animate-pulse">
                             Active
