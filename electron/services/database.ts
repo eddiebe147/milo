@@ -156,8 +156,8 @@ function createTables(database: Database.Database): void {
       polling_interval_ms INTEGER NOT NULL DEFAULT 5000,
       drift_alert_enabled INTEGER NOT NULL DEFAULT 1,
       drift_alert_delay_minutes INTEGER NOT NULL DEFAULT 10,
-      morning_briefing_time TEXT NOT NULL DEFAULT '09:00',
-      evening_review_time TEXT NOT NULL DEFAULT '18:00',
+      morning_briefing_time TEXT NOT NULL DEFAULT '08:30',
+      evening_review_time TEXT NOT NULL DEFAULT '20:00',
       always_on_top INTEGER NOT NULL DEFAULT 0,
       start_minimized INTEGER NOT NULL DEFAULT 0,
       show_in_dock INTEGER NOT NULL DEFAULT 1
@@ -486,7 +486,23 @@ function runMigrations(database: Database.Database): void {
     console.log('[Database] Migration v7 complete')
   }
 
-  // Future migrations go here (if version < 8, etc.)
+  if (version < 8) {
+    console.log('[Database] Running migration v8: Update briefing times to 8:30 AM and 8:00 PM')
+
+    // Update briefing times for existing users (only if they still have the old defaults)
+    database.prepare(`
+      UPDATE user_settings
+      SET morning_briefing_time = '08:30',
+          evening_review_time = '20:00'
+      WHERE morning_briefing_time = '09:00'
+        AND evening_review_time = '18:00'
+    `).run()
+
+    database.pragma('user_version = 8')
+    console.log('[Database] Migration v8 complete')
+  }
+
+  // Future migrations go here (if version < 9, etc.)
 }
 
 // Default app classifications for common productivity apps
