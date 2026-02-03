@@ -1,0 +1,118 @@
+diff --git a/node_modules/active-win/index.js b/node_modules/active-win/index.js
+index dd25ebb..4b1b339 100644
+--- a/node_modules/active-win/index.js
++++ b/node_modules/active-win/index.js
+@@ -1,85 +1,47 @@
+ import process from 'node:process';
+-import {
+-	activeWindowSync as activeWindowSyncMacOS,
+-	openWindowsSync as openWindowsSyncMacOS,
+-} from './lib/macos.js';
+-import {
+-	activeWindowSync as activeWindowSyncLinux,
+-	openWindowsSync as openWindowsSyncLinux,
+-} from './lib/linux.js';
+-import {
+-	activeWindowSync as activeWindowSyncWindows,
+-	openWindowsSync as openWindowsSyncWindows,
+-} from './lib/windows.js';
+ 
+-export async function activeWindow(options) {
+-	if (process.platform === 'darwin') {
+-		const {activeWindow} = await import('./lib/macos.js');
+-		return activeWindow(options);
+-	}
++// Lazy-load platform modules to avoid cross-platform binding issues
++let platformModule = null;
+ 
+-	if (process.platform === 'linux') {
+-		const {activeWindow} = await import('./lib/linux.js');
+-		return activeWindow(options);
+-	}
++async function getPlatformModule() {
++	if (platformModule) return platformModule;
+ 
+-	if (process.platform === 'win32') {
+-		const {activeWindow} = await import('./lib/windows.js');
+-		return activeWindow(options);
++	if (process.platform === 'darwin') {
++		platformModule = await import('./lib/macos.js');
++	} else if (process.platform === 'linux') {
++		platformModule = await import('./lib/linux.js');
++	} else if (process.platform === 'win32') {
++		platformModule = await import('./lib/windows.js');
++	} else {
++		throw new Error('macOS, Linux, and Windows only');
+ 	}
+ 
+-	throw new Error('macOS, Linux, and Windows only');
++	return platformModule;
+ }
+ 
+-export function activeWindowSync(options) {
+-	if (process.platform === 'darwin') {
+-		return activeWindowSyncMacOS(options);
+-	}
+-
+-	if (process.platform === 'linux') {
+-		return activeWindowSyncLinux(options);
+-	}
++function getPlatformModuleSync() {
++	if (platformModule) return platformModule;
++	throw new Error('Call activeWindow() first to initialize, or use dynamic import');
++}
+ 
+-	if (process.platform === 'win32') {
+-		return activeWindowSyncWindows(options);
+-	}
++export async function activeWindow(options) {
++	const mod = await getPlatformModule();
++	return mod.activeWindow(options);
++}
+ 
+-	throw new Error('macOS, Linux, and Windows only');
++export function activeWindowSync(options) {
++	const mod = getPlatformModuleSync();
++	return mod.activeWindowSync(options);
+ }
+ 
+ export async function openWindows(options) {
+-	if (process.platform === 'darwin') {
+-		const {openWindows} = await import('./lib/macos.js');
+-		return openWindows(options);
+-	}
+-
+-	if (process.platform === 'linux') {
+-		const {openWindows} = await import('./lib/linux.js');
+-		return openWindows(options);
+-	}
+-
+-	if (process.platform === 'win32') {
+-		const {openWindows} = await import('./lib/windows.js');
+-		return openWindows(options);
+-	}
+-
+-	throw new Error('macOS, Linux, and Windows only');
++	const mod = await getPlatformModule();
++	return mod.openWindows(options);
+ }
+ 
+ export function openWindowsSync(options) {
+-	if (process.platform === 'darwin') {
+-		return openWindowsSyncMacOS(options);
+-	}
+-
+-	if (process.platform === 'linux') {
+-		return openWindowsSyncLinux(options);
+-	}
+-
+-	if (process.platform === 'win32') {
+-		return openWindowsSyncWindows(options);
+-	}
+-
+-	throw new Error('macOS, Linux, and Windows only');
++	const mod = getPlatformModuleSync();
++	return mod.openWindowsSync(options);
+ }
+ 
+ // Note to self: The `main` field in package.json is requried for pre-gyp.
