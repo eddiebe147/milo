@@ -96,7 +96,7 @@ See [MCP Server README](./packages/mcp-server/README.md) for setup instructions.
 
 ```bash
 # Clone the repository
-git clone https://github.com/eddiebe147/milo.git
+git clone https://github.com/eddiebelaval/milo.git
 cd milo
 
 # Install dependencies
