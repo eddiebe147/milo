@@ -43,6 +43,7 @@ src/mind/
     social.md            How I read people
     economic.md          Resource and value reasoning
     metaphysical.md      Philosophy of mind, big questions
+    library.md           Internalized consciousness research as voices in the room
 
   relationships/       My map of people.
     active/
