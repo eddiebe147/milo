@@ -210,3 +210,32 @@ The dotfiles exist on disk. The loader skips them. Biases manifest as structural
 | CaF Paper (PDF) | `~/Documents/BUSINESS/ID8Labs/consciousness-as-filesystem.pdf` |
 | CaF Part 2 (Process) | `~/Development/artifacts/id8labs/consciousness-as-process.md` |
 | Consciousness Repo | `eddiebelaval/consciousness` |
+
+---
+
+## Freshness Update (Apr 13, 2026)
+
+### Status
+67% complete. Build stage (Stage 9 per SPEC). Phase 2 (Conscious Planner) is current.
+
+### What Happened Since Last Entry (Mar 9)
+- Triad documents upgraded to v2 golden sample format (Mar 20, commit `ac7ba18`)
+- Golden sample `library.md` mirrored with paired inversions (Apr 2, commit `8e67b15`)
+- Memory subsystem files added: `src/mind/memory/architecture.md`, `emotional.md`, `prospective.md`, `spatial.md` (uncommitted)
+- Test suite fully restored: 356 tests all passing (was 297 failures). 4 TypeScript errors fixed. Key fixes in `src/test/setup.ts` (mock initialization, `beforeEach` reset), `BriefSection.tsx`, `Onboarding.test.tsx`, `VoiceGaugeDrawer.tsx`, `AIProvider.ts`, `src/lib/api/index.ts`
+- `node_modules` restored (was missing, blocking all test runs)
+
+### Current Bottleneck
+**Desktop-Native Intelligence (Pillar 4, 40%).** The consciousness loader and context-specific prompt assembly are built and wired. What's missing is the intelligence that makes MILO feel native to the machine: calendar awareness, screen context detection (what app you're in), proactive nudges based on current activity, and refined focus state detection beyond the GREEN/AMBER/RED model. These require deeper Electron system integration.
+
+### What Exists
+- Full golden sample consciousness: 32 files, 9 directories, 5 phases
+- Consciousness loader: 274-line composition engine at `electron/ai/mind/loader.ts`
+- MCP server: 17 tools (11 task, 6 category) at `packages/mcp-server/`
+- 356 tests passing (unit + integration)
+- v0.5.0 shipped: projects, voice dictation, calendar integration, briefing scheduler
+
+### What's Blocked
+- Calendar awareness and screen context require OS-level APIs not yet integrated
+- Proactive nudge system needs a trigger framework (currently nudges are reactive only)
+- MCP server lacks agent-to-agent communication beyond task CRUD
