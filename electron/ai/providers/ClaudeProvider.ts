@@ -436,14 +436,19 @@ After using a tool, confirm the action to the user.`
 
   // Format context for morning briefing
   private formatMorningBriefingContext(input: MorningBriefingInput): string {
+    const activeGoals = input.goals.filter((g) => g.status === 'active')
     const goalsByTimeframe = {
-      yearly: input.goals.filter((g) => g.timeframe === 'yearly'),
-      quarterly: input.goals.filter((g) => g.timeframe === 'quarterly'),
-      monthly: input.goals.filter((g) => g.timeframe === 'monthly'),
-      weekly: input.goals.filter((g) => g.timeframe === 'weekly'),
+      yearly: activeGoals.filter((g) => g.timeframe === 'yearly'),
+      quarterly: activeGoals.filter((g) => g.timeframe === 'quarterly'),
+      monthly: activeGoals.filter((g) => g.timeframe === 'monthly'),
+      weekly: activeGoals.filter((g) => g.timeframe === 'weekly'),
     }
 
     let prompt = `## Today: ${input.todayDate}\n\n`
+
+    if (input.portfolioContext) {
+      prompt += input.portfolioContext + '\n\n'
+    }
 
     if (goalsByTimeframe.yearly.length > 0) {
       prompt += `## Long-term Beacons\n${goalsByTimeframe.yearly.map((g) => `- ${g.title}: ${g.description || 'No description'}`).join('\n')}\n\n`
@@ -511,12 +516,17 @@ After using a tool, confirm the action to the user.`
   private formatChatContext(context: ChatContext): string {
     let contextStr = `## Current Context\n\n`
 
-    if (context.goals && context.goals.length > 0) {
+    if (context.portfolioContext) {
+      contextStr += context.portfolioContext + '\n\n'
+    }
+
+    const activeGoals = (context.goals ?? []).filter((g) => g.status === 'active')
+    if (activeGoals.length > 0) {
       const goalsByTimeframe = {
-        yearly: context.goals.filter((g) => g.timeframe === 'yearly'),
-        quarterly: context.goals.filter((g) => g.timeframe === 'quarterly'),
-        monthly: context.goals.filter((g) => g.timeframe === 'monthly'),
-        weekly: context.goals.filter((g) => g.timeframe === 'weekly'),
+        yearly: activeGoals.filter((g) => g.timeframe === 'yearly'),
+        quarterly: activeGoals.filter((g) => g.timeframe === 'quarterly'),
+        monthly: activeGoals.filter((g) => g.timeframe === 'monthly'),
+        weekly: activeGoals.filter((g) => g.timeframe === 'weekly'),
       }
 
       if (goalsByTimeframe.yearly.length > 0) {

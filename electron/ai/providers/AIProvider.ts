@@ -5,7 +5,7 @@
  * All providers implement this interface for consistent API.
  */
 
-import type { Goal, Task, DailyScore } from '../../../src/types'
+import type { Goal, Task, DailyScore, Category } from '../../../src/types'
 
 // Supported provider types
 export type AIProviderType = 'claude' | 'openai'
@@ -49,6 +49,13 @@ export interface MorningBriefingInput {
   carryoverTasks: Task[]
   calendarEvents?: { start: string; end: string; title: string }[]
   todayDate: string
+  /**
+   * Ground-truth portfolio context from ~/Development/id8/TODO.md.
+   * When present, AI providers MUST use this as the authoritative source for
+   * portfolio goals and MUST NOT fabricate idle-day counts or progress claims.
+   * Injected by main.ts before calling the provider.
+   */
+  portfolioContext?: string
 }
 
 export interface EveningReviewInput {
@@ -148,6 +155,15 @@ export interface ChatContext {
     amberMinutes: number
     redMinutes: number
   }
+  categories?: Category[]
+  activeProjectId?: string | null
+  /**
+   * Ground-truth portfolio context from ~/Development/id8/TODO.md.
+   * When present, AI providers MUST use this as the authoritative source for
+   * portfolio goals and MUST NOT fabricate idle-day counts, progress percentages,
+   * or check-in claims. Injected by main.ts before every chat call.
+   */
+  portfolioContext?: string
 }
 
 export interface ChatInput {
