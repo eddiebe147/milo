@@ -108,7 +108,7 @@ interface BriefTaskItemProps {
 export const BriefTaskItem: React.FC<BriefTaskItemProps> = ({
   title,
   priority,
-  status,
+  status: _status,
   daysOverdue,
   linkedGoal,
   onStartTask,

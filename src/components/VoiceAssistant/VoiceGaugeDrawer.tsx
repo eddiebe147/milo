@@ -61,7 +61,7 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({
   const {
     isListening,
     isSupported: voiceInputSupported,
-    transcript,
+    transcript: _transcript,
     toggleListening,
     clearTranscript,
     error: voiceError,
@@ -179,7 +179,6 @@ export const VoiceGaugeDrawer: React.FC<VoiceGaugeDrawerProps> = ({
     }
   }
 
-  const isActive = isListening || isSpeaking || isGenerating || isProcessing
   const isDisabled = !voiceInputSupported || !ttsSupported || !settings.voiceEnabled
 
   if (isDisabled) return null

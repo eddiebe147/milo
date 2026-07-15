@@ -59,6 +59,26 @@ export interface MiloAPI {
     onNudgeTriggered: (callback: (nudge: NudgeEvent) => void) => () => void
     onTasksChanged: (callback: () => void) => () => void
   }
+  portfolio: {
+    getSnapshot: () => Promise<{
+      path: string
+      active: Array<{ title: string; section: string; metadata: Record<string, string>; state: string }>
+      review: Array<{ title: string; section: string; metadata: Record<string, string>; state: string }>
+      proposed: Array<{ title: string; section: string; metadata: Record<string, string>; state: string }>
+      archived: Array<{ title: string; section: string; metadata: Record<string, string>; state: string }>
+      exists: boolean
+    }>
+    scan: (dryRun?: boolean) => Promise<{
+      path: string
+      scannedAt: string
+      totalGoals: number
+      flipped: Array<{ goal: { title: string; state: string }; verdict: { flag?: string; reason?: string } }>
+      alreadyFlagged: Array<{ title: string; state: string; metadata: Record<string, string> }>
+      actionable: Array<{ title: string; state: string; metadata: Record<string, string> }>
+    }>
+    propose: (proposal: { title: string; section: string; metadata: Record<string, string> }) =>
+      Promise<{ success: boolean }>
+  }
   goals: {
     getAll: () => Promise<Goal[]>
     getById: (id: string) => Promise<Goal | undefined>
@@ -286,6 +306,14 @@ contextBridge.exposeInMainWorld('milo', {
       createEventListener('nudge:triggered', callback),
     onTasksChanged: (callback: () => void) =>
       createEventListener('tasks-changed', callback),
+  },
+
+  // Portfolio (ground-truth goals from ~/Development/id8/TODO.md)
+  portfolio: {
+    getSnapshot: () => ipcRenderer.invoke('portfolio:getSnapshot'),
+    scan: (dryRun: boolean = false) => ipcRenderer.invoke('portfolio:scan', dryRun),
+    propose: (proposal: { title: string; section: string; metadata: Record<string, string> }) =>
+      ipcRenderer.invoke('portfolio:propose', proposal),
   },
 
   // Goals CRUD

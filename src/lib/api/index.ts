@@ -14,7 +14,7 @@ const isElectron = typeof window !== 'undefined' && window.milo !== undefined
  * The ElectronAdapter is created via factory function to prevent
  * window.milo from being accessed during module evaluation on web.
  */
-export const milo: PlatformAdapter = isElectron ? createElectronAdapter() : WebAdapter
+export let milo: PlatformAdapter = isElectron ? createElectronAdapter() : WebAdapter
 
 // For convenience
 export default milo

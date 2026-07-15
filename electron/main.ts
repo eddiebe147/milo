@@ -37,6 +37,12 @@ import {
 import type { Goal, Task, Project } from '../src/types'
 import { taskExecutor, type ExecutionTarget } from './services/TaskExecutor'
 import type { ThemeColors } from './repositories/settings'
+import {
+  formatPortfolioForBriefing,
+  readPortfolio,
+  scanPortfolio,
+  proposePortfolioGoal,
+} from './services/PortfolioReader'
 
 // Window references
 let mainWindow: BrowserWindow | null = null
@@ -324,7 +330,16 @@ function setupIPC(): void {
     if (!provider) throw new Error('AI provider not initialized. Please set your API key.')
     try {
       analytics.trackEvent('morning_briefing_started')
-      const result = await provider.generateMorningBriefing(input)
+
+      let portfolioContext = ''
+      try {
+        portfolioContext = formatPortfolioForBriefing()
+      } catch (err) {
+        console.warn('[IPC] Portfolio context unavailable:', err)
+      }
+
+      const enrichedInput: MorningBriefingInput = { ...input, portfolioContext }
+      const result = await provider.generateMorningBriefing(enrichedInput)
       analytics.trackEvent('morning_briefing_completed')
       return result
     } catch (error) {
@@ -332,6 +347,13 @@ function setupIPC(): void {
       analytics.trackError('error_api', error as Error, { operation: 'morning_briefing' })
       throw error
     }
+  })
+
+  ipcMain.handle('portfolio:getSnapshot', () => readPortfolio())
+  ipcMain.handle('portfolio:scan', (_, dryRun: boolean = false) => scanPortfolio(undefined, dryRun))
+  ipcMain.handle('portfolio:propose', (_, proposal: Parameters<typeof proposePortfolioGoal>[0]) => {
+    proposePortfolioGoal(proposal)
+    return { success: true }
   })
 
   ipcMain.handle('ai:eveningReview', async (_, input: EveningReviewInput) => {
@@ -405,6 +427,13 @@ function setupIPC(): void {
       // Use all incomplete tasks for better context matching
       const tasksForContext = allIncompleteTasks.length > 0 ? allIncompleteTasks : todayTasks
 
+      let portfolioContext = ''
+      try {
+        portfolioContext = formatPortfolioForBriefing()
+      } catch (err) {
+        console.warn('[IPC] Portfolio context unavailable for chat:', err)
+      }
+
       const response = await provider.chat({
         message: input.message,
         conversationHistory: input.conversationHistory,
@@ -421,6 +450,7 @@ function setupIPC(): void {
           // Add categories context for task assignment
           categories,
           activeProjectId: input.activeProjectId,
+          portfolioContext,
         },
       })
 

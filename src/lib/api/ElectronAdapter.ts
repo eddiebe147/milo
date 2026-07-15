@@ -14,6 +14,7 @@ function createElectronAdapter(): PlatformAdapter {
         window: milo.window,
         tray: milo.tray,
         events: milo.events,
+        portfolio: milo.portfolio,
         goals: milo.goals,
         tasks: milo.tasks,
         categories: milo.categories,

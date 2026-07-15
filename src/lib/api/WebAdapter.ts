@@ -34,6 +34,25 @@ export const WebAdapter: PlatformAdapter = {
         onNudgeTriggered: () => () => { },
         onTasksChanged: () => () => { }
     },
+    portfolio: {
+        getSnapshot: async () => ({
+            path: '',
+            active: [],
+            review: [],
+            proposed: [],
+            archived: [],
+            exists: false,
+        }),
+        scan: async () => ({
+            path: '',
+            scannedAt: new Date().toISOString(),
+            totalGoals: 0,
+            flipped: [],
+            alreadyFlagged: [],
+            actionable: [],
+        }),
+        propose: async () => ({ success: false }),
+    },
     goals: goalsWebRepository,
     tasks: tasksWebRepository,
     categories: categoriesWebRepository,

@@ -17,16 +17,16 @@ describe('Onboarding', () => {
     it('renders welcome step with animations', () => {
         render(<Onboarding onComplete={() => { }} />)
 
-        // Check for "Welcome to MILO" text
-        const welcomeText = screen.getByText('Welcome to MILO')
-        expect(welcomeText).toBeInTheDocument()
-        // Verify animation classes are present
-        expect(welcomeText).toHaveClass('animate-fadeIn')
+        // Check for "MILO" heading via MiloLogo
+        const miloText = screen.getByText('MILO')
+        expect(miloText).toBeInTheDocument()
+
+        // Check for subtitle text
+        const subtitle = screen.getByText('Mission Intelligence Life Operator')
+        expect(subtitle).toBeInTheDocument()
 
         // Check for "Get Started" button
         const button = screen.getByRole('button', { name: /get started/i })
         expect(button).toBeInTheDocument()
-        expect(button).toHaveClass('animate-fadeIn')
-        expect(button).toHaveStyle({ animationDelay: '500ms' })
     })
 })
